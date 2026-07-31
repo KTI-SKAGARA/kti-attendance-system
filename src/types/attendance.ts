@@ -30,6 +30,9 @@ export const SKAGARA_CLASSES = [
   "PM 2",
 ] as const;
 
+// Nominal kas rutin default per pertemuan (Rp)
+export const KAS_RUTIN_DEFAULT = 5000;
+
 export const SHEET_TAB_MAP: Record<AngkatanType, string> = {
   "10": "GEN 10",
   "11": "GEN 11",

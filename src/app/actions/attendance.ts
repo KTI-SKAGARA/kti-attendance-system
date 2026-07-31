@@ -7,7 +7,6 @@ import {
   type FilterOptions,
   type DashboardStats,
   type StudentOption,
-  type ClassSummary,
   type ApiResponse,
   STATUS_ABSEN_OPTIONS,
 } from "@/types/attendance";

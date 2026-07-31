@@ -35,6 +35,21 @@ export function getCurrentBulanTahun(): string {
 }
 
 /**
+ * Mask a full name for display on public-facing pages (privacy).
+ * e.g. "MUHAMMAD RIZKY PRATAMA" -> "MUHAMMAD P." / "AHMAD" -> "A***"
+ */
+export function maskNama(nama: string): string {
+  const parts = nama.trim().toUpperCase().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "—";
+  if (parts.length === 1) {
+    return parts[0].length > 2 ? `${parts[0][0]}***` : parts[0];
+  }
+  const first = parts[0];
+  const lastInitial = parts[parts.length - 1][0];
+  return `${first} ${lastInitial}.`;
+}
+
+/**
  * Convert MM-YYYY to a human-readable month name in Indonesian.
  * e.g. "07-2026" -> "Juli 2026"
  */
