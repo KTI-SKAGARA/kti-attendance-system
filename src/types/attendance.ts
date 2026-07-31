@@ -2,9 +2,13 @@
 
 export type AngkatanType = "10" | "11" | "12";
 
+export type FilterAngkatan = AngkatanType | "semua";
+
 export type StatusAbsen = "Hadir" | "Sakit" | "Izin" | "Alfa";
 
 export const ANGKATAN_OPTIONS: AngkatanType[] = ["10", "11", "12"];
+
+export const FILTER_ANGKATAN_OPTIONS: FilterAngkatan[] = ["semua", "10", "11", "12"];
 
 export const STATUS_ABSEN_OPTIONS: StatusAbsen[] = [
   "Hadir",
@@ -31,7 +35,7 @@ export const SKAGARA_CLASSES = [
 ] as const;
 
 // Nominal kas rutin default per pertemuan (Rp)
-export const KAS_RUTIN_DEFAULT = 5000;
+export const KAS_RUTIN_DEFAULT = 2000;
 
 export const SHEET_TAB_MAP: Record<AngkatanType, string> = {
   "10": "GEN 10",
@@ -54,7 +58,7 @@ export interface StudentOption {
 }
 
 export interface FilterState {
-  angkatan: AngkatanType;
+  angkatan: FilterAngkatan;
   kelas: string; // "" means all
   bulan: string; // "" means all (format: MM-YYYY)
   status: string; // "" means all ("Hadir" | "Sakit" | "Izin" | "Alfa")

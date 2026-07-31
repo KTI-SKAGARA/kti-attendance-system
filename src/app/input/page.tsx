@@ -15,7 +15,6 @@ import {
   getExistingStudents,
   getFilterOptions,
 } from "@/app/actions/attendance";
-import { maskNama } from "@/lib/utils";
 import {
   Send,
   Loader2,
@@ -161,7 +160,7 @@ export default function InputPage() {
     if (res.success) {
       setToast({
         type: "success",
-        message: `Data ${maskNama(savedNama)} (${kelas}) berhasil disimpan!`,
+        message: `Data ${savedNama} (${kelas}) berhasil disimpan!`,
       });
 
       setNama("");
@@ -313,7 +312,7 @@ export default function InputPage() {
                       className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left hover:bg-slate-50"
                     >
                       <span className="truncate text-sm font-medium uppercase text-slate-800">
-                        {maskNama(s.nama)}
+                        {s.nama}
                       </span>
                       <span className="shrink-0 text-xs text-slate-400">{s.kelas}</span>
                     </button>

@@ -27,9 +27,7 @@ export default function Navbar() {
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand */}
         <Link href={pathname === "/login" ? "/login" : "/"} className="flex items-center">
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-navy-600 text-sm font-bold text-white">
-            K
-          </span>
+          <img src="/logo-kti.svg" alt="KTI SKAGARA" className="h-8 w-8" />
           <span className="ml-2.5 text-sm font-semibold tracking-tight text-slate-900">
             KTI SKAGARA
           </span>
