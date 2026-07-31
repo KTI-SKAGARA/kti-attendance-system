@@ -19,9 +19,8 @@ import {
   deleteAttendanceRecord,
 } from "@/app/actions/attendance";
 import { formatRupiah, formatBulanTahun } from "@/lib/utils";
+import { APP_NAME, PAGE_SIZE, TOAST_DURATION } from "@/lib/constants";
 import {
-  CheckCircle2,
-  XCircle,
   Search,
   RefreshCw,
   ChevronLeft,
@@ -33,12 +32,13 @@ import {
   Download,
   PlusCircle,
   Trash2,
-  AlertTriangle,
   Users,
 } from "lucide-react";
 import Link from "next/link";
-
-const PAGE_SIZE = 15;
+import DeleteConfirmModal from "@/components/DeleteConfirmModal";
+import Toast from "@/components/Toast";
+import StatCard from "@/components/StatCard";
+import ProgressBarRow from "@/components/ProgressBarRow";
 
 type TaggedRecord = AttendanceRecord & { _angkatan: AngkatanType };
 
@@ -87,57 +87,67 @@ export default function DashboardPage() {
   } | null>(null);
 
   const loadFilterOptions = useCallback(async (angkatan: FilterAngkatan) => {
-    if (angkatan === "semua") {
-      const results = await Promise.all(
-        ANGKATAN_OPTIONS.map((a) => getFilterOptions(a))
-      );
-      const kelasSet = new Set<string>();
-      const bulanSet = new Set<string>();
-      for (const res of results) {
-        if (res.success && res.data) {
-          res.data.kelasList.forEach((k) => kelasSet.add(k));
-          res.data.bulanList.forEach((b) => bulanSet.add(b));
+    try {
+      if (angkatan === "semua") {
+        const results = await Promise.all(
+          ANGKATAN_OPTIONS.map((a) => getFilterOptions(a))
+        );
+        const kelasSet = new Set<string>();
+        const bulanSet = new Set<string>();
+        for (const res of results) {
+          if (res.success && res.data) {
+            res.data.kelasList.forEach((k) => kelasSet.add(k));
+            res.data.bulanList.forEach((b) => bulanSet.add(b));
+          }
         }
+        setFilterOptions({
+          kelasList: Array.from(kelasSet).sort((a, b) => a.localeCompare(b, "id")),
+          bulanList: Array.from(bulanSet).sort((a, b) => {
+            const [am, ay] = a.split("-").map(Number);
+            const [bm, by] = b.split("-").map(Number);
+            return ay !== by ? ay - by : am - bm;
+          }),
+        });
+      } else {
+        const res = await getFilterOptions(angkatan);
+        if (res.success && res.data) setFilterOptions(res.data);
       }
-      setFilterOptions({
-        kelasList: Array.from(kelasSet).sort((a, b) => a.localeCompare(b, "id")),
-        bulanList: Array.from(bulanSet).sort((a, b) => {
-          const [am, ay] = a.split("-").map(Number);
-          const [bm, by] = b.split("-").map(Number);
-          return ay !== by ? ay - by : am - bm;
-        }),
-      });
-    } else {
-      const res = await getFilterOptions(angkatan);
-      if (res.success && res.data) setFilterOptions(res.data);
+    } catch {
+      setFilterOptions({ kelasList: [], bulanList: [] });
     }
   }, []);
 
   const loadRecords = useCallback(async () => {
     setLoading(true);
-    const tagged: TaggedRecord[] = [];
+    try {
+      const tagged: TaggedRecord[] = [];
 
-    if (filters.angkatan === "semua") {
-      const results = await Promise.all(
-        ANGKATAN_OPTIONS.map((a) => getAttendanceRecords(a))
-      );
-      ANGKATAN_OPTIONS.forEach((a, i) => {
-        if (results[i].success && results[i].data) {
-          results[i].data!.forEach((r) => tagged.push({ ...r, _angkatan: a }));
+      if (filters.angkatan === "semua") {
+        const results = await Promise.all(
+          ANGKATAN_OPTIONS.map((a) => getAttendanceRecords(a))
+        );
+        ANGKATAN_OPTIONS.forEach((a, i) => {
+          if (results[i].success && results[i].data) {
+            results[i].data!.forEach((r) => tagged.push({ ...r, _angkatan: a }));
+          }
+        });
+      } else {
+        const res = await getAttendanceRecords(filters.angkatan);
+        if (res.success && res.data) {
+          res.data.forEach((r) => tagged.push({ ...r, _angkatan: filters.angkatan as AngkatanType }));
         }
-      });
-    } else {
-      const res = await getAttendanceRecords(filters.angkatan);
-      if (res.success && res.data) {
-        res.data.forEach((r) => tagged.push({ ...r, _angkatan: filters.angkatan as AngkatanType }));
       }
-    }
 
-    setAllRecords(tagged);
-    const s = await getDashboardStats(tagged);
-    setStats(s);
-    setLoading(false);
-    setPage(1);
+      setAllRecords(tagged);
+      const s = await getDashboardStats(tagged);
+      setStats(s);
+      setPage(1);
+    } catch {
+      setAllRecords([]);
+      setStats(EMPTY_STATS);
+    } finally {
+      setLoading(false);
+    }
   }, [filters.angkatan]);
 
   const records = useMemo(() => {
@@ -180,16 +190,21 @@ export default function DashboardPage() {
   const confirmDeleteRecord = async () => {
     if (deleteModal.index < 0 || !deleteModal.record) return;
     setDeleting(true);
-    const res = await deleteAttendanceRecord(deleteModal.record._angkatan, deleteModal.index);
-    setDeleting(false);
-    if (res.success) {
-      setToast({ type: "success", message: "Catatan absensi berhasil dihapus." });
-      setDeleteModal({ open: false, index: -1, record: null });
-      loadRecords();
-    } else {
-      setToast({ type: "error", message: res.error || "Gagal menghapus data." });
+    try {
+      const res = await deleteAttendanceRecord(deleteModal.record._angkatan, deleteModal.index);
+      if (res.success) {
+        setToast({ type: "success", message: "Catatan absensi berhasil dihapus." });
+        setDeleteModal({ open: false, index: -1, record: null });
+        loadRecords();
+      } else {
+        setToast({ type: "error", message: res.error || "Gagal menghapus data." });
+      }
+    } catch {
+      setToast({ type: "error", message: "Gagal menghapus data." });
+    } finally {
+      setDeleting(false);
+      setTimeout(() => setToast(null), TOAST_DURATION);
     }
-    setTimeout(() => setToast(null), 4000);
   };
 
   const exportToCSV = () => {
@@ -253,7 +268,7 @@ export default function DashboardPage() {
             Rekapitulasi Absensi &amp; Kas
           </h1>
           <p className="mt-0.5 text-sm text-slate-500">
-            {angkatanLabel} — KTI SKAGARA
+            {angkatanLabel} — {APP_NAME}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -357,11 +372,11 @@ export default function DashboardPage() {
         <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
           <div className="flex flex-wrap items-center gap-1">
             {[
-              { id: "", label: "Semua" },
-              { id: "Hadir", label: "Hadir" },
-              { id: "Sakit", label: "Sakit" },
-              { id: "Izin", label: "Izin" },
-              { id: "Alfa", label: "Alfa" },
+              { id: "" as const, label: "Semua" },
+              { id: "Hadir" as const, label: "Hadir" },
+              { id: "Sakit" as const, label: "Sakit" },
+              { id: "Izin" as const, label: "Izin" },
+              { id: "Alfa" as const, label: "Alfa" },
             ].map((st) => (
               <button
                 key={st.id}
@@ -613,69 +628,16 @@ export default function DashboardPage() {
 
       {/* Delete confirmation modal */}
       {deleteModal.open && deleteModal.record && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="card w-full max-w-sm p-6">
-            <div className="flex items-start gap-3">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-50">
-                <AlertTriangle className="h-4.5 w-4.5 text-red-600" />
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-slate-900">Hapus catatan ini?</h3>
-                <p className="mt-0.5 text-xs text-slate-500">Tindakan ini tidak dapat dibatalkan.</p>
-              </div>
-            </div>
-            <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs">
-              <p className="font-medium uppercase text-slate-900">{deleteModal.record.nama}</p>
-              <p className="mt-1 text-slate-500">
-                Angkatan {deleteModal.record._angkatan} • {deleteModal.record.kelas} • {deleteModal.record.tanggal} • {deleteModal.record.statusAbsen}
-              </p>
-            </div>
-            <div className="mt-5 flex items-center justify-end gap-2">
-              <button onClick={() => setDeleteModal({ open: false, index: -1, record: null })} disabled={deleting} className="btn btn-secondary px-3 py-1.5 text-xs">
-                Batal
-              </button>
-              <button onClick={confirmDeleteRecord} disabled={deleting} className="btn bg-red-600 px-3 py-1.5 text-xs text-white hover:bg-red-700">
-                {deleting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                {deleting ? "Menghapus..." : "Hapus"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <DeleteConfirmModal
+          record={deleteModal.record}
+          deleting={deleting}
+          onConfirm={confirmDeleteRecord}
+          onCancel={() => setDeleteModal({ open: false, index: -1, record: null })}
+        />
       )}
 
       {/* Toast */}
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50">
-          <div className={`card flex items-center gap-2.5 px-4 py-3 text-sm font-medium ${toast.type === "success" ? "border-emerald-200 bg-emerald-50 text-emerald-900" : "border-red-200 bg-red-50 text-red-900"}`}>
-            {toast.type === "success" ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" /> : <XCircle className="h-4 w-4 shrink-0 text-red-600" />}
-            {toast.message}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="card p-3.5">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-1 text-lg font-semibold tracking-tight text-slate-900 tabular-nums">{value}</p>
-    </div>
-  );
-}
-
-function ProgressBarRow({ label, count, total, fillClass }: { label: string; count: number; total: number; fillClass: string }) {
-  const pct = total > 0 ? Math.round((count / total) * 1000) / 10 : 0;
-  return (
-    <div>
-      <div className="flex items-center justify-between text-xs">
-        <span className="font-medium text-slate-700">{label}</span>
-        <span className="text-slate-500 tabular-nums">{count} ({pct}%)</span>
-      </div>
-      <div className="mt-1.5 h-2 w-full rounded-full bg-slate-100">
-        <div className={`h-full rounded-full ${fillClass}`} style={{ width: `${pct}%` }} />
-      </div>
+      {toast && <Toast type={toast.type} message={toast.message} />}
     </div>
   );
 }

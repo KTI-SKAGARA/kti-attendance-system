@@ -1,10 +1,12 @@
 "use server";
 
 import { cookies } from "next/headers";
-
-const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || "ktiskagara2026";
-const COOKIE_NAME = "admin_session";
-const SESSION_SECRET = "kti_skagara_secure_session_token_2026";
+import {
+  DEFAULT_ADMIN_PASSWORD,
+  COOKIE_NAME,
+  SESSION_SECRET,
+  SESSION_MAX_AGE,
+} from "@/lib/constants";
 
 export async function loginAdmin(password: string): Promise<{ success: boolean; error?: string }> {
   try {
@@ -14,13 +16,12 @@ export async function loginAdmin(password: string): Promise<{ success: boolean; 
       return { success: false, error: "Password / PIN Admin salah!" };
     }
 
-    // Set secure HTTP-only cookie
     const cookieStore = await cookies();
     cookieStore.set(COOKIE_NAME, SESSION_SECRET, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 7, // 7 days
+      maxAge: SESSION_MAX_AGE,
       path: "/",
     });
 

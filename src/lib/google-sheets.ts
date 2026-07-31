@@ -4,6 +4,7 @@ import {
   type StatusAbsen,
   SHEET_TAB_MAP,
 } from "@/types/attendance";
+import { normalizeName } from "@/lib/utils";
 import fs from "fs";
 import path from "path";
 
@@ -221,7 +222,7 @@ export async function fetchRecords(
 
   return rows.map((row) => ({
     tanggal: row.get("Tanggal") ?? "",
-    nama: (row.get("Nama") ?? "").toUpperCase(),
+    nama: normalizeName(row.get("Nama") ?? ""),
     kelas: row.get("Kelas") ?? "",
     statusAbsen: (row.get("Status_Absen") ?? "Hadir") as StatusAbsen,
     nominalKas: Number(row.get("Nominal_Kas") ?? 0),
@@ -235,7 +236,7 @@ export async function appendRecord(
 ): Promise<void> {
   const formattedRecord: AttendanceRecord = {
     ...record,
-    nama: record.nama.toUpperCase(),
+    nama: normalizeName(record.nama),
   };
 
   if (!isGoogleSheetsConfigured()) {

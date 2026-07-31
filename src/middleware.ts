@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-
-const SESSION_SECRET = "kti_skagara_secure_session_token_2026";
+import { SESSION_SECRET, COOKIE_NAME } from "@/lib/constants";
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const session = request.cookies.get("admin_session");
+  const session = request.cookies.get(COOKIE_NAME);
   const isAuthenticated = session?.value === SESSION_SECRET;
 
   // Allow login page, static files, and _next internal requests

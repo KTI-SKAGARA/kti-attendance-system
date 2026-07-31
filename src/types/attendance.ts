@@ -61,7 +61,7 @@ export interface FilterState {
   angkatan: FilterAngkatan;
   kelas: string; // "" means all
   bulan: string; // "" means all (format: MM-YYYY)
-  status: string; // "" means all ("Hadir" | "Sakit" | "Izin" | "Alfa")
+  status: StatusAbsen | ""; // "" means all
   search: string;
 }
 
@@ -87,15 +87,6 @@ export interface DashboardStats {
   attendanceRate: number; // 0 - 100%
   avgKasPerStudent: number;
   classSummaries: ClassSummary[];
-}
-
-export interface FormInput {
-  angkatan: AngkatanType;
-  kelas: string;
-  nama: string;
-  tanggal: string; // DD/MM/YYYY
-  statusAbsen: StatusAbsen;
-  nominalKas: number;
 }
 
 export interface ApiResponse<T = unknown> {

@@ -65,11 +65,18 @@ export function getCurrentBulanTahun(): string {
 }
 
 /**
+ * Normalize a student name: trim whitespace and convert to uppercase.
+ */
+export function normalizeName(nama: string): string {
+  return nama.trim().toUpperCase();
+}
+
+/**
  * Mask a full name for display on public-facing pages (privacy).
  * e.g. "MUHAMMAD RIZKY PRATAMA" -> "MUHAMMAD P." / "AHMAD" -> "A***"
  */
 export function maskNama(nama: string): string {
-  const parts = nama.trim().toUpperCase().split(/\s+/).filter(Boolean);
+  const parts = normalizeName(nama).split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "—";
   if (parts.length === 1) {
     return parts[0].length > 2 ? `${parts[0][0]}***` : parts[0];

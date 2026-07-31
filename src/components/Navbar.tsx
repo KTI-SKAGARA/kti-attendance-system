@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { logoutAdmin, checkAuth } from "@/app/actions/auth";
+import { APP_NAME, SCHOOL_NAME } from "@/lib/constants";
 import { LogOut, PlusCircle, LayoutDashboard } from "lucide-react";
 
 export default function Navbar() {
@@ -27,12 +28,12 @@ export default function Navbar() {
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand */}
         <Link href={pathname === "/login" ? "/login" : "/"} className="flex items-center">
-          <img src="/logo-kti.jpg" alt="KTI SKAGARA" className="h-8 w-8 rounded" />
+          <img src="/logo-kti.jpg" alt={APP_NAME} className="h-8 w-8 rounded" />
           <span className="ml-2.5 text-sm font-semibold tracking-tight text-slate-900">
-            KTI SKAGARA
+            {APP_NAME}
           </span>
           <span className="ml-2 hidden text-xs text-slate-400 sm:inline">
-            SMK Negeri 3 Jepara
+            {SCHOOL_NAME}
           </span>
         </Link>
 

@@ -14,39 +14,18 @@ import {
   fetchRecords,
   appendRecord,
   deleteRecord,
-  isGoogleSheetsConfigured,
 } from "@/lib/google-sheets";
-import { getBulanTahunFromDate } from "@/lib/utils";
+import { getBulanTahunFromDate, normalizeName } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
-// Read: get filtered records
+// Read: get all records for an angkatan
 // ---------------------------------------------------------------------------
 
 export async function getAttendanceRecords(
-  angkatan: AngkatanType,
-  kelas?: string,
-  bulan?: string,
-  status?: string,
-  search?: string
+  angkatan: AngkatanType
 ): Promise<ApiResponse<AttendanceRecord[]>> {
   try {
-    let records = await fetchRecords(angkatan);
-
-    // Apply filters
-    if (kelas) {
-      records = records.filter((r) => r.kelas === kelas);
-    }
-    if (bulan) {
-      records = records.filter((r) => r.bulanTahun === bulan);
-    }
-    if (status) {
-      records = records.filter((r) => r.statusAbsen === status);
-    }
-    if (search) {
-      const q = search.toLowerCase();
-      records = records.filter((r) => r.nama.toLowerCase().includes(q));
-    }
-
+    const records = await fetchRecords(angkatan);
     return { success: true, data: records };
   } catch (error) {
     return {
@@ -68,7 +47,7 @@ export async function getExistingStudents(
     const studentMap = new Map<string, string>(); // nama -> kelas
 
     for (const r of records) {
-      const upperName = (r.nama || "").toUpperCase().trim();
+      const upperName = normalizeName(r.nama || "");
       if (upperName && !studentMap.has(upperName)) {
         studentMap.set(upperName, r.kelas);
       }
@@ -210,7 +189,7 @@ export async function submitAttendanceRecord(formData: {
   nominalKas: number;
 }): Promise<ApiResponse> {
   try {
-    const formattedNama = formData.nama ? formData.nama.trim().toUpperCase() : "";
+    const formattedNama = formData.nama ? normalizeName(formData.nama) : "";
 
     // Validation
     if (!formattedNama) {
@@ -274,18 +253,4 @@ export async function deleteAttendanceRecord(
       error: error instanceof Error ? error.message : "Gagal menghapus data.",
     };
   }
-}
-
-export async function runAutoSetupGoogleSheet(): Promise<ApiResponse<string>> {
-  const { autoSetupGoogleSheet } = await import("@/lib/google-sheets");
-  const res = await autoSetupGoogleSheet();
-  return {
-    success: res.success,
-    error: res.success ? undefined : res.message,
-    data: res.success ? res.message : undefined,
-  };
-}
-
-export async function checkGoogleSheetsConnection(): Promise<boolean> {
-  return isGoogleSheetsConfigured();
 }

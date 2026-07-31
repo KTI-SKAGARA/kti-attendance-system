@@ -15,7 +15,8 @@ import {
   getExistingStudents,
   getFilterOptions,
 } from "@/app/actions/attendance";
-import { getTodayISO, parseISOTanggal } from "@/lib/utils";
+import { getTodayISO, parseISOTanggal, normalizeName, formatRupiah } from "@/lib/utils";
+import { APP_NAME, SCHOOL_NAME, TOAST_DURATION } from "@/lib/constants";
 import {
   Send,
   Loader2,
@@ -51,20 +52,25 @@ export default function InputPage() {
   ).sort((a, b) => a.localeCompare(b, "id"));
 
   const loadAngkatanData = useCallback(async (selectedAngkatan: AngkatanType) => {
-    const [studentRes, filterRes] = await Promise.all([
-      getExistingStudents(selectedAngkatan),
-      getFilterOptions(selectedAngkatan),
-    ]);
+    try {
+      const [studentRes, filterRes] = await Promise.all([
+        getExistingStudents(selectedAngkatan),
+        getFilterOptions(selectedAngkatan),
+      ]);
 
-    if (studentRes.success && studentRes.data) {
-      setExistingStudents(studentRes.data);
-    } else {
+      if (studentRes.success && studentRes.data) {
+        setExistingStudents(studentRes.data);
+      } else {
+        setExistingStudents([]);
+      }
+
+      if (filterRes.success && filterRes.data) {
+        setExistingClasses(filterRes.data.kelasList);
+      } else {
+        setExistingClasses([]);
+      }
+    } catch {
       setExistingStudents([]);
-    }
-
-    if (filterRes.success && filterRes.data) {
-      setExistingClasses(filterRes.data.kelasList);
-    } else {
       setExistingClasses([]);
     }
   }, []);
@@ -95,13 +101,13 @@ export default function InputPage() {
   };
 
   const handleNamaChange = (val: string) => {
-    const upperVal = val.toUpperCase();
+    const upperVal = normalizeName(val);
     setNama(upperVal);
     setShowSuggestions(true);
     if (errors.nama) setErrors((prev) => ({ ...prev, nama: "" }));
 
     const matched = existingStudents.find(
-      (s) => s.nama.toUpperCase().trim() === upperVal.trim()
+      (s) => normalizeName(s.nama) === upperVal
     );
     if (matched && matched.kelas) {
       setKelas(matched.kelas);
@@ -147,7 +153,7 @@ export default function InputPage() {
     setSubmitting(true);
     setToast(null);
 
-    const savedNama = nama.trim().toUpperCase();
+    const savedNama = normalizeName(nama);
 
     const res = await submitAttendanceRecord({
       angkatan,
@@ -182,7 +188,7 @@ export default function InputPage() {
       });
     }
 
-    setTimeout(() => setToast(null), 4000);
+    setTimeout(() => setToast(null), TOAST_DURATION);
   };
 
   const resetForm = () => {
@@ -214,7 +220,7 @@ export default function InputPage() {
               Input Absensi &amp; Kas
             </h1>
             <p className="mt-0.5 text-sm text-slate-500">
-              KTI SKAGARA — SMK Negeri 3 Jepara
+              {APP_NAME} — {SCHOOL_NAME}
             </p>
           </div>
         </div>
@@ -396,7 +402,7 @@ export default function InputPage() {
                   className="h-4 w-4 rounded border-slate-300 accent-navy-600"
                 />
                 <span className="text-sm font-medium text-slate-800">
-                  Bayar kas rutin ({formatRupiahShort(KAS_RUTIN_DEFAULT)})
+                  Bayar kas rutin ({formatRupiah(KAS_RUTIN_DEFAULT)})
                 </span>
               </label>
 
@@ -478,8 +484,4 @@ export default function InputPage() {
       )}
     </div>
   );
-}
-
-function formatRupiahShort(amount: number): string {
-  return `Rp ${amount.toLocaleString("id-ID")}`;
 }
