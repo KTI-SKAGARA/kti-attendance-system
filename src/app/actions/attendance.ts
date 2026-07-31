@@ -13,6 +13,7 @@ import {
 import {
   fetchRecords,
   appendRecord,
+  appendRecords,
   deleteRecord,
 } from "@/lib/google-sheets";
 import { getBulanTahunFromDate, normalizeName } from "@/lib/utils";
@@ -251,6 +252,48 @@ export async function deleteAttendanceRecord(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Gagal menghapus data.",
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Write: bulk submit attendance records (Mode Cepat)
+// ---------------------------------------------------------------------------
+
+export async function submitBulkAttendance(
+  angkatan: AngkatanType,
+  kelas: string,
+  tanggal: string, // DD/MM/YYYY
+  entries: { nama: string; statusAbsen: StatusAbsen; nominalKas: number }[]
+): Promise<ApiResponse<{ saved: number }>> {
+  try {
+    if (!kelas || kelas.trim().length === 0) {
+      return { success: false, error: "Kelas wajib diisi." };
+    }
+    if (!tanggal || !/^\d{2}\/\d{2}\/\d{4}$/.test(tanggal)) {
+      return { success: false, error: "Format tanggal tidak valid (DD/MM/YYYY)." };
+    }
+    if (!entries || entries.length === 0) {
+      return { success: false, error: "Tidak ada data yang dipilih." };
+    }
+
+    const bulanTahun = getBulanTahunFromDate(tanggal);
+    const records: AttendanceRecord[] = entries.map((e) => ({
+      tanggal,
+      nama: normalizeName(e.nama),
+      kelas: kelas.trim(),
+      statusAbsen: e.statusAbsen,
+      nominalKas: e.nominalKas,
+      bulanTahun,
+    }));
+
+    await appendRecords(angkatan, records);
+
+    return { success: true, data: { saved: records.length } };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Gagal menyimpan data.",
     };
   }
 }

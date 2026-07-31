@@ -258,6 +258,36 @@ export async function appendRecord(
   });
 }
 
+export async function appendRecords(
+  angkatan: AngkatanType,
+  records: AttendanceRecord[]
+): Promise<void> {
+  const formatted = records.map((r) => ({
+    ...r,
+    nama: normalizeName(r.nama),
+  }));
+
+  if (!isGoogleSheetsConfigured()) {
+    if (!mockAppended[angkatan]) mockAppended[angkatan] = [];
+    mockAppended[angkatan].push(...formatted);
+    return;
+  }
+
+  const tabName = SHEET_TAB_MAP[angkatan] || `GEN ${angkatan}`;
+  const sheet = await getSheet(tabName);
+
+  const rows = formatted.map((r) => ({
+    Tanggal: r.tanggal,
+    Nama: r.nama,
+    Kelas: r.kelas,
+    Status_Absen: r.statusAbsen,
+    Nominal_Kas: r.nominalKas,
+    Bulan_Tahun: r.bulanTahun,
+  }));
+
+  await sheet.addRows(rows);
+}
+
 export async function deleteRecord(
   angkatan: AngkatanType,
   recordIndex: number
