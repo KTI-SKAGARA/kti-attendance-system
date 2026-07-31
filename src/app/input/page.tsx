@@ -15,6 +15,7 @@ import {
   getExistingStudents,
   getFilterOptions,
 } from "@/app/actions/attendance";
+import { getTodayISO, parseISOTanggal } from "@/lib/utils";
 import {
   Send,
   Loader2,
@@ -30,6 +31,7 @@ export default function InputPage() {
   const [angkatan, setAngkatan] = useState<AngkatanType>("10");
   const [kelas, setKelas] = useState("");
   const [nama, setNama] = useState("");
+  const [tanggal, setTanggal] = useState(getTodayISO());
   const [statusAbsen, setStatusAbsen] = useState<StatusAbsen>("Hadir");
   const [bayarKas, setBayarKas] = useState(true);
   const [nominalKas, setNominalKas] = useState(`${KAS_RUTIN_DEFAULT}`);
@@ -151,6 +153,7 @@ export default function InputPage() {
       angkatan,
       kelas: kelas.trim(),
       nama: savedNama,
+      tanggal: parseISOTanggal(tanggal),
       statusAbsen,
       nominalKas: bayarKas ? Number(nominalKas) : 0,
     });
@@ -165,6 +168,7 @@ export default function InputPage() {
 
       setNama("");
       setKelas("");
+      setTanggal(getTodayISO());
       setStatusAbsen("Hadir");
       setBayarKas(true);
       setNominalKas(`${KAS_RUTIN_DEFAULT}`);
@@ -185,6 +189,7 @@ export default function InputPage() {
     setAngkatan("10");
     setKelas("");
     setNama("");
+    setTanggal(getTodayISO());
     setStatusAbsen("Hadir");
     setBayarKas(true);
     setNominalKas(`${KAS_RUTIN_DEFAULT}`);
@@ -217,8 +222,8 @@ export default function InputPage() {
 
       {/* Form */}
       <form onSubmit={handleSubmit} className="card mt-5 p-6 space-y-5 sm:p-8">
-        {/* Angkatan + Kelas */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        {/* Angkatan + Kelas + Tanggal */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
             <label htmlFor="input-angkatan" className="label">
               Angkatan <span className="text-red-500">*</span>
@@ -271,6 +276,19 @@ export default function InputPage() {
                 {errors.kelas}
               </p>
             )}
+          </div>
+
+          <div>
+            <label htmlFor="input-tanggal" className="label">
+              Tanggal <span className="text-red-500">*</span>
+            </label>
+            <input
+              id="input-tanggal"
+              type="date"
+              className="input"
+              value={tanggal}
+              onChange={(e) => setTanggal(e.target.value)}
+            />
           </div>
         </div>
 

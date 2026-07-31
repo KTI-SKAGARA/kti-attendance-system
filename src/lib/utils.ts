@@ -25,6 +25,36 @@ export function getTodayFormatted(): string {
 }
 
 /**
+ * Get today's date as ISO string YYYY-MM-DD (for <input type="date">).
+ */
+export function getTodayISO(): string {
+  const now = new Date();
+  const day = String(now.getDate()).padStart(2, "0");
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const year = now.getFullYear();
+  return `${year}-${month}-${day}`;
+}
+
+/**
+ * Convert ISO date YYYY-MM-DD to DD/MM/YYYY.
+ */
+export function parseISOTanggal(iso: string): string {
+  const [y, m, d] = iso.split("-");
+  return `${d}/${m}/${y}`;
+}
+
+/**
+ * Derive bulanTahun (MM-YYYY) from a DD/MM/YYYY date string.
+ */
+export function getBulanTahunFromDate(tanggal: string): string {
+  const parts = tanggal.split("/");
+  if (parts.length === 3) {
+    return `${parts[1]}-${parts[2]}`;
+  }
+  return getCurrentBulanTahun();
+}
+
+/**
  * Get current month-year formatted as MM-YYYY.
  */
 export function getCurrentBulanTahun(): string {

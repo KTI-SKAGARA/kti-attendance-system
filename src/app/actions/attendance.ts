@@ -16,7 +16,7 @@ import {
   deleteRecord,
   isGoogleSheetsConfigured,
 } from "@/lib/google-sheets";
-import { getTodayFormatted, getCurrentBulanTahun } from "@/lib/utils";
+import { getBulanTahunFromDate } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
 // Read: get filtered records
@@ -205,6 +205,7 @@ export async function submitAttendanceRecord(formData: {
   angkatan: AngkatanType;
   kelas: string;
   nama: string;
+  tanggal: string; // DD/MM/YYYY
   statusAbsen: StatusAbsen;
   nominalKas: number;
 }): Promise<ApiResponse> {
@@ -217,6 +218,9 @@ export async function submitAttendanceRecord(formData: {
     }
     if (!formData.kelas || formData.kelas.trim().length === 0) {
       return { success: false, error: "Kelas wajib diisi." };
+    }
+    if (!formData.tanggal || !/^\d{2}\/\d{2}\/\d{4}$/.test(formData.tanggal)) {
+      return { success: false, error: "Format tanggal tidak valid (DD/MM/YYYY)." };
     }
     if (!STATUS_ABSEN_OPTIONS.includes(formData.statusAbsen)) {
       return { success: false, error: "Status absen tidak valid." };
@@ -233,12 +237,12 @@ export async function submitAttendanceRecord(formData: {
     }
 
     const record: AttendanceRecord = {
-      tanggal: getTodayFormatted(),
+      tanggal: formData.tanggal,
       nama: formattedNama,
       kelas: formData.kelas.trim(),
       statusAbsen: formData.statusAbsen,
       nominalKas: formData.nominalKas,
-      bulanTahun: getCurrentBulanTahun(),
+      bulanTahun: getBulanTahunFromDate(formData.tanggal),
     };
 
     await appendRecord(formData.angkatan, record);

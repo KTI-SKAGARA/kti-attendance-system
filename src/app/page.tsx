@@ -214,6 +214,26 @@ export default function DashboardPage() {
     [records, page]
   );
 
+  const angkatanSummaries = useMemo(() => {
+    if (filters.angkatan !== "semua") return [];
+    const map = new Map<AngkatanType, { total: number; hadir: number; kas: number }>();
+    for (const r of allRecords) {
+      const cur = map.get(r._angkatan) || { total: 0, hadir: 0, kas: 0 };
+      cur.total += 1;
+      if (r.statusAbsen === "Hadir") cur.hadir += 1;
+      cur.kas += r.nominalKas;
+      map.set(r._angkatan, cur);
+    }
+    return ANGKATAN_OPTIONS
+      .filter((a) => map.has(a))
+      .map((a) => ({
+        angkatan: a,
+        total: map.get(a)!.total,
+        hadir: map.get(a)!.hadir,
+        kas: map.get(a)!.kas,
+      }));
+  }, [allRecords, filters.angkatan]);
+
   const statusBadgeClass = (status: string) => {
     switch (status) {
       case "Hadir": return "badge badge-hadir";
@@ -560,6 +580,34 @@ export default function DashboardPage() {
               </div>
             )}
           </div>
+
+          {filters.angkatan === "semua" && angkatanSummaries.length > 0 && (
+            <div className="card p-5">
+              <h2 className="text-sm font-semibold text-slate-900">Rekap per Angkatan</h2>
+              <div className="mt-3 overflow-x-auto">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Angkatan</th>
+                      <th>Total Catatan</th>
+                      <th>Jumlah Hadir</th>
+                      <th>Total Kas Terkumpul</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {angkatanSummaries.map((as) => (
+                      <tr key={as.angkatan}>
+                        <td className="font-medium text-slate-900">Angkatan {as.angkatan}</td>
+                        <td className="text-slate-600 tabular-nums">{as.total}</td>
+                        <td className="text-slate-600 tabular-nums">{as.hadir}</td>
+                        <td className="font-medium text-slate-900 tabular-nums">{formatRupiah(as.kas)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -93,6 +93,7 @@ export interface FormInput {
   angkatan: AngkatanType;
   kelas: string;
   nama: string;
+  tanggal: string; // DD/MM/YYYY
   statusAbsen: StatusAbsen;
   nominalKas: number;
 }
