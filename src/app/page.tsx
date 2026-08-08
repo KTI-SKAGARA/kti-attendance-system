@@ -324,8 +324,8 @@ export default function DashboardPage() {
         Nominal_Kas: r.nominalKas,
         Bulan_Tahun: r.bulanTahun,
       }));
-      const ws = XLSX.utils.json_to_sheet(data);
-      ws["!cols"] = [
+      const rawWs = XLSX.utils.json_to_sheet(data);
+      rawWs["!cols"] = [
         { wch: 5 },
         { wch: 12 },
         { wch: 22 },
@@ -334,8 +334,145 @@ export default function DashboardPage() {
         { wch: 14 },
         { wch: 12 },
       ];
+
+      const students = new Map<
+        string,
+        {
+          nama: string;
+          kelas: string;
+          hadir: number;
+          sakit: number;
+          izin: number;
+          alfa: number;
+          kas: number;
+        }
+      >();
+      const classes = new Map<
+        string,
+        {
+          siswa: Set<string>;
+          total: number;
+          hadir: number;
+          sakit: number;
+          izin: number;
+          alfa: number;
+          kas: number;
+        }
+      >();
+
+      for (const r of genRecords) {
+        const key = `${r.kelas}|${r.nama}`;
+        const s = students.get(key) || {
+          nama: r.nama,
+          kelas: r.kelas,
+          hadir: 0,
+          sakit: 0,
+          izin: 0,
+          alfa: 0,
+          kas: 0,
+        };
+        if (r.statusAbsen === "Hadir") s.hadir += 1;
+        else if (r.statusAbsen === "Sakit") s.sakit += 1;
+        else if (r.statusAbsen === "Izin") s.izin += 1;
+        else s.alfa += 1;
+        s.kas += r.nominalKas;
+        students.set(key, s);
+
+        const c = classes.get(r.kelas) || {
+          siswa: new Set<string>(),
+          total: 0,
+          hadir: 0,
+          sakit: 0,
+          izin: 0,
+          alfa: 0,
+          kas: 0,
+        };
+        c.siswa.add(r.nama);
+        c.total += 1;
+        if (r.statusAbsen === "Hadir") c.hadir += 1;
+        else if (r.statusAbsen === "Sakit") c.sakit += 1;
+        else if (r.statusAbsen === "Izin") c.izin += 1;
+        else c.alfa += 1;
+        c.kas += r.nominalKas;
+        classes.set(r.kelas, c);
+      }
+
+      const kelasOrder = Array.from(classes.entries())
+        .sort(
+          (a, b) =>
+            b[1].total - a[1].total || a[0].localeCompare(b[0], "id")
+        )
+        .map(([k]) => k);
+
+      const studentRows = Array.from(students.values())
+        .sort(
+          (a, b) =>
+            kelasOrder.indexOf(a.kelas) - kelasOrder.indexOf(b.kelas) ||
+            a.nama.localeCompare(b.nama, "id")
+        )
+        .map((s, i) => ({
+          No: i + 1,
+          Nama: s.nama,
+          Kelas: s.kelas,
+          Hadir: s.hadir,
+          Sakit: s.sakit,
+          Izin: s.izin,
+          Alfa: s.alfa,
+          Total: s.hadir + s.sakit + s.izin + s.alfa,
+          "Kehadiran (%)":
+            Math.round(
+              (s.hadir / (s.hadir + s.sakit + s.izin + s.alfa)) * 1000
+            ) / 10,
+          "Total Kas": s.kas,
+        }));
+      const studentWs = XLSX.utils.json_to_sheet(studentRows);
+      studentWs["!cols"] = [
+        { wch: 5 },
+        { wch: 24 },
+        { wch: 12 },
+        { wch: 8 },
+        { wch: 8 },
+        { wch: 8 },
+        { wch: 8 },
+        { wch: 8 },
+        { wch: 14 },
+        { wch: 14 },
+      ];
+
+      const classRows = kelasOrder.map((k, i) => {
+        const c = classes.get(k)!;
+        return {
+          No: i + 1,
+          Kelas: k,
+          "Jumlah Siswa": c.siswa.size,
+          "Total Catatan": c.total,
+          Hadir: c.hadir,
+          Sakit: c.sakit,
+          Izin: c.izin,
+          Alfa: c.alfa,
+          "Kehadiran (%)":
+            Math.round((c.hadir / c.total) * 1000) / 10,
+          "Total Kas": c.kas,
+        };
+      });
+      const classWs = XLSX.utils.json_to_sheet(classRows);
+      classWs["!cols"] = [
+        { wch: 5 },
+        { wch: 12 },
+        { wch: 14 },
+        { wch: 14 },
+        { wch: 8 },
+        { wch: 8 },
+        { wch: 8 },
+        { wch: 8 },
+        { wch: 14 },
+        { wch: 14 },
+      ];
+
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, "Rekap");
+      XLSX.utils.book_append_sheet(wb, rawWs, "Rekap");
+      XLSX.utils.book_append_sheet(wb, studentWs, "Rekap Individu");
+      XLSX.utils.book_append_sheet(wb, classWs, "Rekap per Kelas");
       const bulanSlug = filters.bulan ? `_${filters.bulan.replace("-", "")}` : "";
       XLSX.writeFile(wb, `Rekap_${genName}${bulanSlug}.xlsx`);
     };
@@ -347,7 +484,7 @@ export default function DashboardPage() {
         exportGen(genRecords, `Gen${g}`);
       }
     } else {
-      exportGen(records, `Gen${filters.gen}`);
+      exportGen([...records], `Gen${filters.gen}`);
     }
   };
 
