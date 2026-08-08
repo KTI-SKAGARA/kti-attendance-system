@@ -264,6 +264,7 @@ body {
   width: 100%;
   border-collapse: collapse;
   font-size: 0.875rem;
+  table-layout: auto;
 }
 .data-table thead th {
   padding: 0.625rem 1rem;
