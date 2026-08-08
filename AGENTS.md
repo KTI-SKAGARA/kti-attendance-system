@@ -34,7 +34,23 @@ KTI SKAGARA — Next.js 16 (App Router) + TypeScript + Tailwind CSS v4 attendanc
 - `cn()` in `src/lib/utils.ts` (clsx + tailwind-merge) for conditional classes; `formatRupiah`/`formatBulanTahun` for display formatting.
 - Sorting uses `localeCompare(..., "id")`.
 
+## TaggedRecord & raw index
+
+`TaggedRecord = AttendanceRecord & { _gen: Gen; _rawIdx: number }` is defined locally in `src/app/page.tsx:48` (and `src/components/DeleteConfirmModal.tsx:6`). `_rawIdx` is the index of the record within its gen's sheet data (the array index from `fetchRecords`). **Always use `_rawIdx` for edit/delete operations**, not the index in the filtered/sorted list — the old bug caused wrong records to be modified when filters were active.
+
 ## Environment
 
-- Deploy target: Vercel (README documents env vars). `.env.local` exists locally and is gitignored, as is `service-account.json` — never commit or log credentials.
-- Skills live in `.agents/skills/` — use them rather than guessing. UI/motion: prototype, improve-animations, review-animations, find-animation-opportunities, animation-vocabulary, apple-design, emil-design-eng, pick-ui-library, vercel-react-view-transitions. Code quality: vercel-react-best-practices (React/Next.js perf), web-design-guidelines (UI/UX/accessibility review), webapp-testing (Playwright verification — the project has no test suite), deploy-to-vercel. Sources: emilkowalski/skills, vercel-labs/agent-skills, ComposioHQ/awesome-claude-skills.
+- Deploy target: Vercel. Remote `ktiskagara` → `https://github.com/KTI-SKAGARA/kti-attendance-system.git`. Remote `origin` → legacy (`naidrahiqa`).
+- `.env.local` exists locally and is gitignored, as is `service-account.json` — never commit or log credentials.
+- Skills live in `.agents/skills/` (gitignored, local only) — use them rather than guessing.
+
+## Branching workflow
+
+Work on `dev` branch. Push to fork (`origin`) first, then open PR to upstream (`ktiskagara/KTI-SKAGARA`):
+
+```bash
+git push origin dev        # push to fork
+gh pr create --repo KTI-SKAGARA/kti-attendance-system --title "..." --body "..."
+```
+
+Never push directly to `ktiskagara`. Always PR.
