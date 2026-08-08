@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import {
   type Gen,
   type FilterGen,
@@ -36,6 +36,7 @@ import {
   Archive,
 } from "lucide-react";
 import Link from "next/link";
+import * as XLSX from "xlsx";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import Toast from "@/components/Toast";
 import StatCard from "@/components/StatCard";
@@ -89,6 +90,12 @@ export default function DashboardPage() {
     type: "success" | "error";
     message: string;
   } | null>(null);
+
+  // Swipe state per row
+  const [swipedIndex, setSwipedIndex] = useState<number | null>(null);
+  const touchStartX = useRef(0);
+  const touchCurrentX = useRef(0);
+  const swipingRef = useRef(false);
 
   // Gens to iterate based on showLulus toggle
   const iterGens = useMemo(() => {
@@ -232,45 +239,73 @@ export default function DashboardPage() {
     }
   };
 
-  // Export per gen per bulan
-  const exportToCSV = () => {
+  // Swipe handlers for touch delete
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchCurrentX.current = e.touches[0].clientX;
+    swipingRef.current = false;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent, idx: number) => {
+    const diff = touchStartX.current - e.touches[0].clientX;
+    if (Math.abs(diff) > 10) {
+      swipingRef.current = true;
+    }
+    if (diff > 0) {
+      touchCurrentX.current = e.touches[0].clientX;
+      setSwipedIndex(diff > 60 ? idx : null);
+    } else {
+      setSwipedIndex(null);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    swipingRef.current = false;
+  };
+
+  const handleRowClick = () => {
+    if (swipingRef.current) return;
+    setSwipedIndex(null);
+  };
+
+  // Export per gen per bulan — Excel format
+  const exportToExcel = () => {
     if (records.length === 0) return;
 
+    const exportGen = (genRecords: TaggedRecord[], genName: string) => {
+        const data = genRecords.map((r, i) => ({
+        No: i + 1,
+        Tanggal: r.tanggal,
+        Nama: r.nama,
+        Kelas: r.kelas,
+        Status_Absen: r.statusAbsen,
+        Nominal_Kas: r.nominalKas,
+        Bulan_Tahun: r.bulanTahun,
+      }));
+      const ws = XLSX.utils.json_to_sheet(data);
+      ws["!cols"] = [
+        { wch: 5 },
+        { wch: 12 },
+        { wch: 22 },
+        { wch: 10 },
+        { wch: 12 },
+        { wch: 14 },
+        { wch: 12 },
+      ];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Rekap");
+      const bulanSlug = filters.bulan ? `_${filters.bulan.replace("-", "")}` : "";
+      XLSX.writeFile(wb, `Rekap_${genName}${bulanSlug}.xlsx`);
+    };
+
     if (filters.gen === "semua") {
-      // Export 1 file per gen
       for (const g of iterGens) {
         const genRecords = records.filter((r) => r._gen === g);
         if (genRecords.length === 0) continue;
-
-        const headers = ["No,Tanggal,Nama,Kelas,Status_Absen,Nominal_Kas,Bulan_Tahun"];
-        const rows = genRecords.map(
-          (r, i) =>
-            `${i + 1},"${r.tanggal}","${r.nama}","${r.kelas}","${r.statusAbsen}",${r.nominalKas},"${r.bulanTahun}"`
-        );
-        const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
-        const link = document.createElement("a");
-        link.setAttribute("href", encodeURI(csvContent));
-        const bulanSlug = filters.bulan ? `_${filters.bulan.replace("-", "")}` : "";
-        link.setAttribute("download", `Rekap_Gen${g}${bulanSlug}.csv`);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        exportGen(genRecords, `Gen${g}`);
       }
     } else {
-      // Single gen
-      const headers = ["No,Tanggal,Nama,Kelas,Status_Absen,Nominal_Kas,Bulan_Tahun"];
-      const rows = records.map(
-        (r, i) =>
-          `${i + 1},"${r.tanggal}","${r.nama}","${r.kelas}","${r.statusAbsen}",${r.nominalKas},"${r.bulanTahun}"`
-      );
-      const csvContent = "data:text/csv;charset=utf-8," + [headers, ...rows].join("\n");
-      const link = document.createElement("a");
-      link.setAttribute("href", encodeURI(csvContent));
-      const bulanSlug = filters.bulan ? `_${filters.bulan.replace("-", "")}` : "";
-      link.setAttribute("download", `Rekap_Gen${filters.gen}${bulanSlug}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      exportGen(records, `Gen${filters.gen}`);
     }
   };
 
@@ -313,34 +348,34 @@ export default function DashboardPage() {
   return (
     <div className="mx-auto max-w-5xl animate-page">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-5">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-5 dark:border-slate-800">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
             Rekapitulasi Absensi &amp; Kas
           </h1>
-          <p className="mt-0.5 text-sm text-slate-500">
+          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
             {filters.gen === "semua" ? "Semua Gen" : genLabel(filters.gen as Gen)} — {APP_NAME}
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5">
+          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-800">
             <button
               onClick={() => setViewMode("table")}
-              className={`btn px-3 py-1.5 text-xs ${viewMode === "table" ? "bg-slate-900 text-white" : "btn-ghost text-slate-600"}`}
+              className={`btn min-h-[44px] px-3 py-2 text-sm ${viewMode === "table" ? "bg-slate-900 text-white dark:bg-slate-700" : "btn-ghost text-slate-600 dark:text-slate-400"}`}
             >
-              <TableIcon className="h-3.5 w-3.5" />
+              <TableIcon className="h-4 w-4" />
               Tabel
             </button>
             <button
               onClick={() => setViewMode("stats")}
-              className={`btn px-3 py-1.5 text-xs ${viewMode === "stats" ? "bg-slate-900 text-white" : "btn-ghost text-slate-600"}`}
+              className={`btn min-h-[44px] px-3 py-2 text-sm ${viewMode === "stats" ? "bg-slate-900 text-white dark:bg-slate-700" : "btn-ghost text-slate-600 dark:text-slate-400"}`}
             >
-              <PieChartIcon className="h-3.5 w-3.5" />
+              <PieChartIcon className="h-4 w-4" />
               Statistik
             </button>
           </div>
-          <Link href="/input" className="btn btn-primary px-3 py-1.5 text-xs">
-            <PlusCircle className="h-3.5 w-3.5" />
+          <Link href="/input" className="btn btn-primary min-h-[44px] px-3 py-2 text-sm">
+            <PlusCircle className="h-4 w-4" />
             Input Data
           </Link>
         </div>
@@ -352,8 +387,8 @@ export default function DashboardPage() {
         <div className="flex flex-wrap items-center gap-1">
           <button
             onClick={() => setFilters((f) => ({ ...f, gen: "semua" }))}
-            className={`btn px-2.5 py-1 text-xs ${
-              filters.gen === "semua" ? "bg-slate-900 text-white" : "btn-ghost text-slate-600"
+            className={`btn min-h-[44px] px-3 py-2 text-sm ${
+              filters.gen === "semua" ? "bg-slate-900 text-white dark:bg-slate-700" : "btn-ghost text-slate-600 dark:text-slate-400"
             }`}
           >
             Semua Gen
@@ -362,8 +397,8 @@ export default function DashboardPage() {
             <button
               key={g}
               onClick={() => setFilters((f) => ({ ...f, gen: g }))}
-              className={`btn px-2.5 py-1 text-xs ${
-                filters.gen === g ? "bg-slate-900 text-white" : "btn-ghost text-slate-600"
+              className={`btn min-h-[44px] px-3 py-2 text-sm ${
+                filters.gen === g ? "bg-slate-900 text-white dark:bg-slate-700" : "btn-ghost text-slate-600 dark:text-slate-400"
               }`}
             >
               Gen {g}
@@ -372,18 +407,18 @@ export default function DashboardPage() {
           {/* Archive toggle */}
           <button
             onClick={() => setShowLulus((v) => !v)}
-            className={`btn px-2.5 py-1 text-xs ${
-              showLulus ? "bg-amber-100 text-amber-800" : "btn-ghost text-slate-400"
+            className={`btn min-h-[44px] px-3 py-2 text-sm ${
+              showLulus ? "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" : "btn-ghost text-slate-400"
             }`}
             title="Tampilkan gen lulus"
           >
-            <Archive className="h-3.5 w-3.5" />
+            <Archive className="h-4 w-4" />
             Arsip
           </button>
         </div>
 
         {/* Secondary filters */}
-        <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3">
+        <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-700">
           <div className="flex flex-wrap items-center gap-1">
             {([
               { id: "" as const, label: "Semua" },
@@ -395,14 +430,14 @@ export default function DashboardPage() {
               <button
                 key={st.id}
                 onClick={() => setFilters((prev) => ({ ...prev, status: st.id }))}
-                className={`btn px-2.5 py-1 text-xs ${filters.status === st.id ? "bg-slate-900 text-white" : "btn-ghost text-slate-600"}`}
+                className={`btn min-h-[44px] px-3 py-2 text-sm ${filters.status === st.id ? "bg-slate-900 text-white dark:bg-slate-700" : "btn-ghost text-slate-600 dark:text-slate-400"}`}
               >
                 {st.label}
               </button>
             ))}
 
             <select
-              className="select ml-1 py-1 text-xs"
+              className="select ml-1 min-h-[44px] py-2 text-sm"
               value={filters.kelas}
               onChange={(e) => setFilters((f) => ({ ...f, kelas: e.target.value }))}
             >
@@ -415,7 +450,7 @@ export default function DashboardPage() {
             </select>
 
             <select
-              className="select ml-1 py-1 text-xs"
+              className="select ml-1 min-h-[44px] py-2 text-sm"
               value={filters.bulan}
               onChange={(e) => setFilters((f) => ({ ...f, bulan: e.target.value }))}
             >
@@ -428,11 +463,11 @@ export default function DashboardPage() {
 
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-400" />
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 placeholder="Cari nama..."
-                className="input py-1 pl-8 pr-3 text-xs"
+                className="input min-h-[44px] pl-9 pr-3 text-sm"
                 value={filters.search}
                 onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
               />
@@ -442,9 +477,9 @@ export default function DashboardPage() {
                 onClick={() =>
                   setFilters({ gen: filters.gen, kelas: "", bulan: "", status: "", search: "" })
                 }
-                className="btn btn-ghost px-2 py-1 text-xs text-slate-500"
+                className="btn btn-ghost min-h-[44px] min-w-[44px] px-2 py-2 text-slate-500"
               >
-                <FilterX className="h-3.5 w-3.5" />
+                <FilterX className="h-4 w-4" />
               </button>
             )}
             <button
@@ -452,18 +487,18 @@ export default function DashboardPage() {
                 loadRecords();
                 loadFilterOptions(filters.gen);
               }}
-              className="btn btn-ghost px-2 py-1 text-xs text-slate-500"
+              className="btn btn-ghost min-h-[44px] min-w-[44px] px-2 py-2 text-slate-500"
               title="Muat ulang data"
             >
-              <RefreshCw className="h-3.5 w-3.5" />
+              <RefreshCw className="h-4 w-4" />
             </button>
             <button
-              onClick={exportToCSV}
+              onClick={exportToExcel}
               disabled={records.length === 0}
-              className="btn btn-ghost px-2 py-1 text-xs text-slate-500"
-              title="Export CSV"
+              className="btn btn-ghost min-h-[44px] min-w-[44px] px-2 py-2 text-slate-500"
+              title="Export Excel"
             >
-              <Download className="h-3.5 w-3.5" />
+              <Download className="h-4 w-4" />
             </button>
           </div>
         </div>
@@ -475,12 +510,12 @@ export default function DashboardPage() {
           {loading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-              <span className="ml-2 text-sm text-slate-500">Memuat data...</span>
+              <span className="ml-2 text-sm text-slate-500 dark:text-slate-400">Memuat data...</span>
             </div>
           ) : records.length === 0 ? (
             <div className="py-16 text-center">
-              <Users className="mx-auto h-8 w-8 text-slate-300" />
-              <p className="mt-2 text-sm text-slate-500">Belum ada data.</p>
+              <Users className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600" />
+              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Belum ada data.</p>
             </div>
           ) : (
             <>
@@ -499,56 +534,94 @@ export default function DashboardPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {paginatedRecords.map((r, i) => (
-                      <tr key={`${r._gen}-${r.tanggal}-${r.nama}-${i}`}>
-                        <td className="text-slate-400 tabular-nums">
-                          {(page - 1) * PAGE_SIZE + i + 1}
-                        </td>
-                        <td className="whitespace-nowrap text-slate-600">{r.tanggal}</td>
-                        <td className="font-medium uppercase text-slate-900">{r.nama}</td>
-                        <td className="text-slate-600">{r.kelas}</td>
-                        <td>
-                          <span
-                            className={`badge ${
-                              r.statusAbsen === "Hadir"
-                                ? "bg-emerald-50 text-emerald-700"
-                                : r.statusAbsen === "Sakit"
-                                ? "bg-amber-50 text-amber-700"
-                                : r.statusAbsen === "Izin"
-                                ? "bg-orange-50 text-orange-700"
-                                : "bg-red-50 text-red-700"
-                            }`}
+                    {paginatedRecords.map((r, i) => {
+                      const rowIdx = (page - 1) * PAGE_SIZE + i;
+                      const isSwiped = swipedIndex === rowIdx;
+                      return (
+                        <tr
+                          key={`${r._gen}-${r.tanggal}-${r.nama}-${i}`}
+                          className="swipe-row"
+                          onClick={handleRowClick}
+                          onTouchStart={handleTouchStart}
+                          onTouchMove={(e) => handleTouchMove(e, rowIdx)}
+                          onTouchEnd={handleTouchEnd}
+                        >
+                          <td
+                            colSpan={filters.gen === "semua" ? 8 : 7}
+                            style={{ padding: 0 }}
                           >
-                            {r.statusAbsen}
-                          </span>
-                        </td>
-                        <td className="text-right tabular-nums">
-                          {r.nominalKas > 0 ? formatRupiah(r.nominalKas) : "—"}
-                        </td>
-                        {filters.gen === "semua" && (
-                          <td>
-                            <span className="badge bg-slate-50 text-slate-600">
-                              {r._gen}
-                            </span>
+                            <div
+                              className={`swipe-row-inner flex items-center ${isSwiped ? "-translate-x-[80px]" : ""}`}
+                            >
+                              <div className="flex flex-1 items-center">
+                                <td className="w-10 text-slate-400 tabular-nums">
+                                  {(page - 1) * PAGE_SIZE + i + 1}
+                                </td>
+                                <td className="whitespace-nowrap text-slate-600 dark:text-slate-400">{r.tanggal}</td>
+                                <td className="font-medium uppercase text-slate-900 dark:text-slate-100">{r.nama}</td>
+                                <td className="text-slate-600 dark:text-slate-400">{r.kelas}</td>
+                                <td>
+                                  <span
+                                    className={`badge ${
+                                      r.statusAbsen === "Hadir"
+                                        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"
+                                        : r.statusAbsen === "Sakit"
+                                        ? "bg-amber-50 text-amber-700 dark:bg-amber-900 dark:text-amber-300"
+                                        : r.statusAbsen === "Izin"
+                                        ? "bg-orange-50 text-orange-700 dark:bg-orange-900 dark:text-orange-300"
+                                        : "bg-red-50 text-red-700 dark:bg-red-900 dark:text-red-300"
+                                    }`}
+                                  >
+                                    {r.statusAbsen}
+                                  </span>
+                                </td>
+                                <td className="text-right tabular-nums">
+                                  {r.nominalKas > 0 ? formatRupiah(r.nominalKas) : "—"}
+                                </td>
+                                {filters.gen === "semua" && (
+                                  <td>
+                                    <span className="badge bg-slate-50 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                                      {r._gen}
+                                    </span>
+                                  </td>
+                                )}
+                                <td className="w-10 text-right">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setDeleteModal({
+                                        open: true,
+                                        index: rowIdx,
+                                        record: r,
+                                      });
+                                    }}
+                                    className="btn btn-ghost min-h-[44px] min-w-[44px] p-2 text-slate-400 hover:text-red-600"
+                                    title="Hapus"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                </td>
+                              </div>
+                              <div className="swipe-row-actions">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeleteModal({
+                                      open: true,
+                                      index: rowIdx,
+                                      record: r,
+                                    });
+                                  }}
+                                  className="flex h-full items-center justify-center bg-red-500 px-5 text-white"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </div>
                           </td>
-                        )}
-                        <td className="text-right">
-                          <button
-                            onClick={() =>
-                              setDeleteModal({
-                                open: true,
-                                index: (page - 1) * PAGE_SIZE + i,
-                                record: r,
-                              })
-                            }
-                            className="btn btn-ghost p-1 text-slate-400 hover:text-red-600"
-                            title="Hapus"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -556,25 +629,25 @@ export default function DashboardPage() {
               {/* Pagination */}
               {totalPages > 1 && (
                 <>
-                  <div className="border-t border-slate-100 px-4 py-3">
-                    <p className="text-xs text-slate-500">
+                  <div className="border-t border-slate-100 px-4 py-3 dark:border-slate-700">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       Menampilkan{" "}
-                      <span className="font-semibold text-slate-700 tabular-nums">
+                      <span className="font-semibold text-slate-700 tabular-nums dark:text-slate-300">
                         {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, records.length)}
                       </span>{" "}
                       dari{" "}
-                      <span className="font-semibold text-slate-700 tabular-nums">{records.length}</span>{" "}
+                      <span className="font-semibold text-slate-700 tabular-nums dark:text-slate-300">{records.length}</span>{" "}
                       data
                     </p>
                     <div className="flex items-center gap-1">
-                      <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="btn btn-ghost p-1.5" aria-label="Halaman sebelumnya">
-                        <ChevronLeft className="h-4 w-4" />
+                      <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="btn btn-ghost min-h-[44px] min-w-[44px] p-2" aria-label="Halaman sebelumnya">
+                        <ChevronLeft className="h-5 w-5" />
                       </button>
-                      <span className="px-2 text-xs font-medium text-slate-600 tabular-nums">
+                      <span className="px-2 text-sm font-medium text-slate-600 tabular-nums dark:text-slate-400">
                         {page} / {totalPages}
                       </span>
-                      <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className="btn btn-ghost p-1.5" aria-label="Halaman berikutnya">
-                        <ChevronRight className="h-4 w-4" />
+                      <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className="btn btn-ghost min-h-[44px] min-w-[44px] p-2" aria-label="Halaman berikutnya">
+                        <ChevronRight className="h-5 w-5" />
                       </button>
                     </div>
                   </div>
@@ -590,7 +663,7 @@ export default function DashboardPage() {
         <div className="mt-5 space-y-4">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="card p-5">
-              <h2 className="text-sm font-semibold text-slate-900">
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                 Distribusi Kehadiran
               </h2>
               {stats.totalRecords === 0 ? (
@@ -605,25 +678,25 @@ export default function DashboardPage() {
               )}
             </div>
             <div className="card p-5">
-              <h2 className="text-sm font-semibold text-slate-900">Ringkasan Keuangan Kas</h2>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Ringkasan Keuangan Kas</h2>
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <StatCard label="Total Kas Terkumpul" value={formatRupiah(stats.totalKas)} />
                 <StatCard label="Rata-rata / Catatan" value={formatRupiah(stats.avgKasPerStudent)} />
               </div>
-              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3.5">
+              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-700 dark:bg-slate-800">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-medium text-slate-700">Tingkat Kehadiran</p>
-                  <span className="text-base font-semibold text-slate-900 tabular-nums">{stats.attendanceRate}%</span>
+                  <p className="text-xs font-medium text-slate-700 dark:text-slate-300">Tingkat Kehadiran</p>
+                  <span className="text-base font-semibold text-slate-900 tabular-nums dark:text-slate-100">{stats.attendanceRate}%</span>
                 </div>
-                <div className="mt-2 h-2 w-full rounded-full bg-slate-200">
-                  <div className="h-full rounded-full bg-navy-600" style={{ width: `${stats.attendanceRate}%` }} />
+                <div className="mt-2 h-2 w-full rounded-full bg-slate-200 dark:bg-slate-700">
+                  <div className="h-full rounded-full bg-navy-600 dark:bg-navy-400" style={{ width: `${stats.attendanceRate}%` }} />
                 </div>
               </div>
             </div>
           </div>
 
           <div className="card p-5">
-            <h2 className="text-sm font-semibold text-slate-900">Rekap Kas per Kelas</h2>
+            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Rekap Kas per Kelas</h2>
             {stats.classSummaries.length === 0 ? (
               <p className="py-6 text-center text-xs text-slate-400">Belum ada rekap per kelas.</p>
             ) : (
@@ -640,10 +713,10 @@ export default function DashboardPage() {
                   <tbody>
                     {stats.classSummaries.map((cs) => (
                       <tr key={cs.kelas}>
-                        <td className="font-medium text-slate-900">{cs.kelas}</td>
-                        <td className="text-slate-600 tabular-nums">{cs.totalRecords}</td>
-                        <td className="text-slate-600 tabular-nums">{cs.hadirCount}</td>
-                        <td className="font-medium text-slate-900 tabular-nums">{formatRupiah(cs.totalKas)}</td>
+                        <td className="font-medium text-slate-900 dark:text-slate-100">{cs.kelas}</td>
+                        <td className="text-slate-600 tabular-nums dark:text-slate-400">{cs.totalRecords}</td>
+                        <td className="text-slate-600 tabular-nums dark:text-slate-400">{cs.hadirCount}</td>
+                        <td className="font-medium text-slate-900 tabular-nums dark:text-slate-100">{formatRupiah(cs.totalKas)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -654,7 +727,7 @@ export default function DashboardPage() {
 
           {filters.gen === "semua" && genSummaries.length > 0 && (
             <div className="card p-5">
-              <h2 className="text-sm font-semibold text-slate-900">Rekap per Gen</h2>
+              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Rekap per Gen</h2>
               <div className="mt-3 overflow-x-auto">
                 <table className="data-table">
                   <thead>
@@ -669,17 +742,17 @@ export default function DashboardPage() {
                   <tbody>
                     {genSummaries.map((gs) => (
                       <tr key={gs.gen} className={gs.isLulus ? "opacity-60" : ""}>
-                        <td className="font-medium text-slate-900">Gen {gs.gen}</td>
+                        <td className="font-medium text-slate-900 dark:text-slate-100">Gen {gs.gen}</td>
                         <td>
                           {gs.isLulus ? (
-                            <span className="badge bg-amber-50 text-amber-700">Lulus</span>
+                            <span className="badge bg-amber-50 text-amber-700 dark:bg-amber-900 dark:text-amber-300">Lulus</span>
                           ) : (
-                            <span className="badge bg-emerald-50 text-emerald-700">Aktif</span>
+                            <span className="badge bg-emerald-50 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">Aktif</span>
                           )}
                         </td>
-                        <td className="text-slate-600 tabular-nums">{gs.total}</td>
-                        <td className="text-slate-600 tabular-nums">{gs.hadir}</td>
-                        <td className="font-medium text-slate-900 tabular-nums">{formatRupiah(gs.kas)}</td>
+                        <td className="text-slate-600 tabular-nums dark:text-slate-400">{gs.total}</td>
+                        <td className="text-slate-600 tabular-nums dark:text-slate-400">{gs.hadir}</td>
+                        <td className="font-medium text-slate-900 tabular-nums dark:text-slate-100">{formatRupiah(gs.kas)}</td>
                       </tr>
                     ))}
                   </tbody>
