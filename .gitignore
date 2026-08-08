@@ -42,3 +42,6 @@ service-account.json
 *.tsbuildinfo
 next-env.d.ts
 
+# opencode skills (local only)
+.agents/
+
