@@ -525,10 +525,10 @@ export default function DashboardPage() {
             <button
               onClick={exportToExcel}
               disabled={records.length === 0}
-              className="btn btn-ghost min-h-[44px] min-w-[44px] px-2 py-2 text-slate-500"
-              title="Export Excel"
+              className="btn btn-primary min-h-[44px] px-3 py-2 text-sm"
             >
               <Download className="h-4 w-4" />
+              Export
             </button>
           </div>
         </div>
@@ -598,26 +598,28 @@ export default function DashboardPage() {
                             </span>
                           </td>
                           <td className="text-right">
-                            <button
-                              onClick={() => openEditModal(r, rowIdx)}
-                              className="btn btn-ghost min-h-[44px] min-w-[44px] p-2 text-slate-400 hover:text-blue-600"
-                              title="Edit"
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </button>
-                            <button
-                              onClick={() =>
-                                setDeleteModal({
-                                  open: true,
-                                  index: rowIdx,
-                                  record: r,
-                                })
-                              }
-                              className="btn btn-ghost min-h-[44px] min-w-[44px] p-2 text-slate-400 hover:text-red-600"
-                              title="Hapus"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                            <div className="inline-flex items-center gap-0.5">
+                              <button
+                                onClick={() => openEditModal(r, rowIdx)}
+                                className="btn btn-ghost min-h-[44px] min-w-[44px] p-2 text-slate-400 hover:text-blue-600"
+                                title="Edit"
+                              >
+                                <Pencil className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() =>
+                                  setDeleteModal({
+                                    open: true,
+                                    index: rowIdx,
+                                    record: r,
+                                  })
+                                }
+                                className="btn btn-ghost min-h-[44px] min-w-[44px] p-2 text-slate-400 hover:text-red-600"
+                                title="Hapus"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
