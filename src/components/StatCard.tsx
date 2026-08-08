@@ -1,8 +1,10 @@
 export default function StatCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="card p-3.5">
-      <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500 dark:text-slate-400">{label}</p>
-      <p className="mt-1 text-lg font-semibold tracking-tight text-slate-900 tabular-nums dark:text-slate-100">{value}</p>
+    <div className="rounded-xl border-2 border-border bg-surface p-3.5">
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted">{label}</p>
+      <p className="mt-1 font-display text-lg font-extrabold tracking-tight text-foreground tabular-nums">
+        {value}
+      </p>
     </div>
   );
 }

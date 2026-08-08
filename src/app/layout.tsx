@@ -24,18 +24,18 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
         <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Jost:wght@400;500;600;700;800&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-screen antialiased">
+      <body className="noise min-h-screen antialiased">
         <ThemeProvider>
-          <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
-            <Navbar />
-            <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-              {children}
-            </main>
-          </div>
+          <div className="dot-grid pointer-events-none fixed inset-0 -z-10 opacity-40" />
+          <div className="grid-bg pointer-events-none fixed inset-0 -z-10" />
+          <Navbar />
+          <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+            {children}
+          </main>
         </ThemeProvider>
       </body>
     </html>

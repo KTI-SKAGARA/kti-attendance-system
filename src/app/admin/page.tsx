@@ -13,11 +13,10 @@ import {
   Loader2,
   Plus,
   GraduationCap,
-  CheckCircle2,
-  AlertCircle,
   RotateCcw,
 } from "lucide-react";
 import Link from "next/link";
+import Toast from "@/components/Toast";
 
 export default function AdminPage() {
   const [gens, setGens] = useState<GenConfig[]>([]);
@@ -89,26 +88,24 @@ export default function AdminPage() {
   return (
     <div className="mx-auto max-w-2xl animate-page">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-200 pb-5 dark:border-slate-800">
+      <div className="flex items-center justify-between border-b-2 border-border pb-5">
         <div className="flex items-center gap-3">
           <Link href="/" className="btn btn-secondary min-h-[44px] min-w-[44px] p-2" aria-label="Kembali ke dashboard">
-            <ArrowLeft className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+            <ArrowLeft className="h-4 w-4" />
           </Link>
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-              Admin Panel
+            <p className="text-[10px] font-bold uppercase tracking-widest text-accent">{APP_NAME}</p>
+            <h1 className="mt-0.5 font-display text-2xl font-extrabold uppercase tracking-tight text-foreground">
+              Admin <span className="marker">Panel</span>
             </h1>
-            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-              {APP_NAME} — Kelola Gen
-            </p>
           </div>
         </div>
       </div>
 
       {/* Tambah Gen */}
       <div className="card mt-5 p-6 sm:p-8">
-        <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Tambah Gen Baru</h2>
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+        <h2 className="font-display text-sm font-bold uppercase tracking-wide text-foreground">Tambah Gen Baru</h2>
+        <p className="mt-1 text-xs font-medium text-muted">
           Masukkan nomor gen (misal: 13). Tab sheet &quot;GEN 13&quot; akan dibuat otomatis.
         </p>
         <div className="mt-4 flex items-end gap-3">
@@ -146,17 +143,17 @@ export default function AdminPage() {
 
       {/* Daftar Gen */}
       <div className="card mt-4 p-6 sm:p-8">
-        <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Daftar Gen</h2>
-        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+        <h2 className="font-display text-sm font-bold uppercase tracking-wide text-foreground">Daftar Gen</h2>
+        <p className="mt-1 text-xs font-medium text-muted">
           Gen aktif tampil di filter &quot;Semua Gen&quot;. Gen lulus tersembunyi dari filter utama tapi data tetap tersimpan.
         </p>
 
         {loading ? (
           <div className="flex items-center justify-center py-10">
-            <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+            <Loader2 className="h-5 w-5 animate-spin text-accent" />
           </div>
         ) : gens.length === 0 ? (
-          <p className="py-6 text-center text-xs text-slate-400">Belum ada gen.</p>
+          <p className="py-6 text-center text-xs font-medium text-muted">Belum ada gen.</p>
         ) : (
           <div className="mt-4 overflow-x-auto">
             <table className="data-table">
@@ -170,22 +167,20 @@ export default function AdminPage() {
               <tbody>
                 {gens.map((g) => (
                   <tr key={g.gen}>
-                    <td className="font-medium text-slate-900 dark:text-slate-100">Gen {g.gen}</td>
+                    <td className="font-display font-extrabold text-foreground">Gen {g.gen}</td>
                     <td>
                       {g.status === "aktif" ? (
-                        <span className="badge bg-emerald-50 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">Aktif</span>
+                        <span className="badge border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-300">Aktif</span>
                       ) : (
-                        <span className="badge bg-amber-50 text-amber-700 dark:bg-amber-900 dark:text-amber-300">Lulus</span>
+                        <span className="badge border-amber-400/40 bg-amber-400/15 text-amber-600 dark:text-amber-300">Lulus</span>
                       )}
                     </td>
                     <td className="text-right">
                       <button
                         onClick={() => handleToggleLulus(g.gen, g.status)}
                         disabled={submitting}
-                        className={`btn min-h-[44px] px-3 py-2 text-sm ${
-                          g.status === "aktif"
-                            ? "btn-ghost text-amber-600 hover:text-amber-700 dark:text-amber-400"
-                            : "btn-ghost text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
+                        className={`btn btn-ghost min-h-[44px] px-3 py-2 text-sm ${
+                          g.status === "aktif" ? "hover:!text-gold" : "hover:!text-emerald-500"
                         }`}
                       >
                         {g.status === "aktif" ? (
@@ -208,24 +203,7 @@ export default function AdminPage() {
       </div>
 
       {/* Toast */}
-      {toast && (
-        <div className="fixed bottom-6 right-6 z-50 max-w-[calc(100vw-3rem)]">
-          <div
-            className={`card flex items-center gap-2.5 px-4 py-3 text-sm font-medium ${
-              toast.type === "success"
-                ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
-                : "border-red-200 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300"
-            }`}
-          >
-            {toast.type === "success" ? (
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
-            ) : (
-              <AlertCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
-            )}
-            <span className="break-words">{toast.message}</span>
-          </div>
-        </div>
-      )}
+      {toast && <Toast type={toast.type} message={toast.message} />}
     </div>
   );
 }
