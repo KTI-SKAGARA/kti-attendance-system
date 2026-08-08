@@ -63,7 +63,7 @@ export default function Navbar() {
   const isActive = (href: string) => pathname === href;
 
   return (
-    <header className="border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+    <header className="sticky top-0 z-30 border-b-2 border-accent/10 bg-glass-bg backdrop-blur">
       <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         {/* Brand */}
         <Link
@@ -73,12 +73,12 @@ export default function Navbar() {
           <img
             src="/logo-kti.jpg"
             alt={APP_NAME}
-            className="h-8 w-8 rounded"
+            className="h-8 w-8 rounded-lg border-2 border-foreground/20"
           />
-          <span className="ml-2.5 text-sm font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-            {APP_NAME}
+          <span className="ml-2.5 font-display text-sm font-extrabold uppercase tracking-tight text-foreground">
+            KTI SKAGARA
           </span>
-          <span className="ml-2 hidden text-xs text-slate-400 dark:text-slate-500 sm:inline">
+          <span className="ml-2 hidden text-[10px] font-semibold uppercase tracking-widest text-muted sm:inline">
             {SCHOOL_NAME}
           </span>
         </Link>
@@ -91,19 +91,24 @@ export default function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`btn min-h-[44px] px-3 py-2 text-sm ${
+                  className={`relative min-h-[44px] rounded-lg px-3 py-2 text-sm font-semibold uppercase tracking-wide transition-colors ${
                     isActive(link.href)
-                      ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100"
-                      : "btn-ghost text-slate-600 dark:text-slate-400"
+                      ? "text-accent"
+                      : "text-muted hover:text-foreground"
                   }`}
                 >
-                  <link.icon className="h-4 w-4" />
-                  {link.label}
+                  {isActive(link.href) && (
+                    <span className="absolute inset-x-1 -bottom-[1px] h-0.5 rounded-full bg-gradient-to-r from-transparent via-accent to-transparent" />
+                  )}
+                  <span className="flex items-center gap-1.5">
+                    <link.icon className="h-4 w-4" />
+                    {link.label}
+                  </span>
                 </Link>
               ))}
               <button
                 onClick={cycleTheme}
-                className="btn btn-ghost min-h-[44px] min-w-[44px] px-2 py-2 text-slate-500 dark:text-slate-400"
+                className="btn btn-ghost min-h-[44px] min-w-[44px] px-2 py-2"
                 title="Ganti tema"
               >
                 <ThemeIcon className="h-4 w-4" />
@@ -111,7 +116,7 @@ export default function Navbar() {
               {isAuthenticated && (
                 <button
                   onClick={handleLogout}
-                  className="btn btn-ghost min-h-[44px] px-3 py-2 text-sm text-slate-500 hover:text-red-600 dark:text-slate-400"
+                  className="btn btn-ghost min-h-[44px] px-3 py-2 text-sm text-muted hover:!text-danger"
                   title="Keluar dari sesi Admin"
                 >
                   <LogOut className="h-4 w-4" />
@@ -124,14 +129,15 @@ export default function Navbar() {
             <div className="flex items-center gap-1 md:hidden">
               <button
                 onClick={cycleTheme}
-                className="btn btn-ghost min-h-[44px] min-w-[44px] px-2 py-2 text-slate-500 dark:text-slate-400"
+                className="btn btn-ghost min-h-[44px] min-w-[44px] px-2 py-2"
                 title="Ganti tema"
               >
                 <ThemeIcon className="h-4 w-4" />
               </button>
               <button
                 onClick={() => setMobileOpen(!mobileOpen)}
-                className="btn btn-ghost min-h-[44px] min-w-[44px] px-2 py-2 text-slate-600 dark:text-slate-400"
+                className="btn btn-ghost min-h-[44px] min-w-[44px] px-2 py-2"
+                aria-label="Menu"
               >
                 {mobileOpen ? (
                   <X className="h-5 w-5" />
@@ -146,17 +152,17 @@ export default function Navbar() {
 
       {/* Mobile dropdown */}
       {mobileOpen && pathname !== "/login" && (
-        <div className="border-t border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900 md:hidden">
+        <div className="border-t-2 border-border bg-surface md:hidden">
           <nav className="flex flex-col p-2">
             {navLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 onClick={() => setMobileOpen(false)}
-                className={`btn min-h-[48px] justify-start px-4 py-3 text-sm ${
+                className={`flex min-h-[48px] items-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold uppercase tracking-wide ${
                   isActive(link.href)
-                    ? "bg-slate-100 text-slate-900 dark:bg-slate-800 dark:text-slate-100"
-                    : "btn-ghost text-slate-600 dark:text-slate-400"
+                    ? "bg-accent/15 text-accent"
+                    : "text-muted hover:text-foreground"
                 }`}
               >
                 <link.icon className="h-4 w-4" />
@@ -169,7 +175,7 @@ export default function Navbar() {
                   setMobileOpen(false);
                   handleLogout();
                 }}
-                className="btn btn-ghost min-h-[48px] justify-start px-4 py-3 text-sm text-slate-500 hover:text-red-600 dark:text-slate-400"
+                className="flex min-h-[48px] items-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold uppercase tracking-wide text-muted hover:!text-danger"
               >
                 <LogOut className="h-4 w-4" />
                 Keluar

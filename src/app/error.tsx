@@ -9,10 +9,10 @@ export default function GlobalError({
 }) {
   return (
     <div className="flex min-h-[50vh] flex-col items-center justify-center px-4 text-center">
-      <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+      <h2 className="font-display text-lg font-extrabold uppercase tracking-tight text-foreground">
         Terjadi kesalahan
       </h2>
-      <p className="mt-2 max-w-md text-sm text-slate-500 dark:text-slate-400">
+      <p className="mt-2 max-w-md text-sm font-medium text-muted">
         {error.message || "App mengalami error yang tidak terduga."}
       </p>
       <button onClick={reset} className="btn btn-primary mt-5 min-h-[44px] px-4 py-2 text-sm">

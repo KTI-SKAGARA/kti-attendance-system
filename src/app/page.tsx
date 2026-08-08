@@ -527,27 +527,27 @@ export default function DashboardPage() {
   return (
     <div className="mx-auto max-w-5xl animate-page">
       {/* Header */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-5 dark:border-slate-800">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b-2 border-border pb-5">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-            Rekapitulasi Absensi &amp; Kas
-          </h1>
-          <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
-            {filters.gen === "semua" ? "Semua Gen" : genLabel(filters.gen as Gen)} — {APP_NAME}
+          <p className="text-[10px] font-bold uppercase tracking-widest text-accent">
+            {APP_NAME} — {filters.gen === "semua" ? "Semua Gen" : genLabel(filters.gen as Gen)}
           </p>
+          <h1 className="mt-0.5 font-display text-2xl font-extrabold uppercase tracking-tight text-foreground sm:text-3xl">
+            Rekap <span className="marker">Absensi</span> &amp; Kas
+          </h1>
         </div>
         <div className="flex items-center gap-2">
-          <div className="inline-flex rounded-lg border border-slate-200 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-800">
+          <div className="inline-flex items-center gap-1 rounded-xl border-2 border-border bg-surface p-1">
             <button
               onClick={() => setViewMode("table")}
-              className={`btn min-h-[44px] px-3 py-2 text-sm ${viewMode === "table" ? "bg-slate-900 text-white dark:bg-slate-700" : "btn-ghost text-slate-600 dark:text-slate-400"}`}
+              className={`chip min-h-[44px] ${viewMode === "table" ? "chip-on" : ""}`}
             >
               <TableIcon className="h-4 w-4" />
               Tabel
             </button>
             <button
               onClick={() => setViewMode("stats")}
-              className={`btn min-h-[44px] px-3 py-2 text-sm ${viewMode === "stats" ? "bg-slate-900 text-white dark:bg-slate-700" : "btn-ghost text-slate-600 dark:text-slate-400"}`}
+              className={`chip min-h-[44px] ${viewMode === "stats" ? "chip-on" : ""}`}
             >
               <PieChartIcon className="h-4 w-4" />
               Statistik
@@ -563,12 +563,10 @@ export default function DashboardPage() {
       {/* Filters */}
       <div className="card mt-5 p-4 sm:p-5">
         {/* Gen filter */}
-        <div className="flex flex-wrap items-center gap-1">
+        <div className="flex flex-wrap items-center gap-1.5">
           <button
             onClick={() => setFilters((f) => ({ ...f, gen: "semua" }))}
-            className={`btn min-h-[44px] px-3 py-2 text-sm ${
-              filters.gen === "semua" ? "bg-slate-900 text-white dark:bg-slate-700" : "btn-ghost text-slate-600 dark:text-slate-400"
-            }`}
+            className={`chip min-h-[44px] ${filters.gen === "semua" ? "chip-on" : ""}`}
           >
             Semua Gen
           </button>
@@ -576,19 +574,14 @@ export default function DashboardPage() {
             <button
               key={g}
               onClick={() => setFilters((f) => ({ ...f, gen: g }))}
-              className={`btn min-h-[44px] px-3 py-2 text-sm ${
-                filters.gen === g ? "bg-slate-900 text-white dark:bg-slate-700" : "btn-ghost text-slate-600 dark:text-slate-400"
-              }`}
+              className={`chip min-h-[44px] ${filters.gen === g ? "chip-on" : ""}`}
             >
               Gen {g}
             </button>
           ))}
-          {/* Archive toggle */}
           <button
             onClick={() => setShowLulus((v) => !v)}
-            className={`btn min-h-[44px] px-3 py-2 text-sm ${
-              showLulus ? "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" : "btn-ghost text-slate-400"
-            }`}
+            className={`chip min-h-[44px] ${showLulus ? "chip-on" : ""}`}
             title="Tampilkan gen lulus"
           >
             <Archive className="h-4 w-4" />
@@ -597,8 +590,8 @@ export default function DashboardPage() {
         </div>
 
         {/* Secondary filters */}
-        <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 dark:border-slate-700">
-          <div className="flex flex-wrap items-center gap-1">
+        <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 border-t-2 border-border pt-3">
+          <div className="flex flex-wrap items-center gap-1.5">
             {([
               { id: "" as const, label: "Semua" },
               { id: "Hadir" as const, label: "Hadir" },
@@ -609,14 +602,14 @@ export default function DashboardPage() {
               <button
                 key={st.id}
                 onClick={() => setFilters((prev) => ({ ...prev, status: st.id }))}
-                className={`btn min-h-[44px] px-3 py-2 text-sm ${filters.status === st.id ? "bg-slate-900 text-white dark:bg-slate-700" : "btn-ghost text-slate-600 dark:text-slate-400"}`}
+                className={`chip min-h-[44px] ${filters.status === st.id ? "chip-on" : ""}`}
               >
                 {st.label}
               </button>
             ))}
 
             <select
-              className="select ml-1 min-h-[44px] py-2 text-sm"
+              className="select ml-1 min-h-[44px] w-auto py-2 text-sm"
               value={filters.kelas}
               onChange={(e) => setFilters((f) => ({ ...f, kelas: e.target.value }))}
             >
@@ -629,7 +622,7 @@ export default function DashboardPage() {
             </select>
 
             <select
-              className="select ml-1 min-h-[44px] py-2 text-sm"
+              className="select ml-1 min-h-[44px] w-auto py-2 text-sm"
               value={filters.bulan}
               onChange={(e) => setFilters((f) => ({ ...f, bulan: e.target.value }))}
             >
@@ -642,11 +635,11 @@ export default function DashboardPage() {
 
           <div className="flex items-center gap-2">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
               <input
                 type="text"
                 placeholder="Cari nama..."
-                className="input min-h-[44px] pl-9 pr-3 text-sm"
+                className="input min-h-[44px] w-44 pl-9 pr-3 text-sm sm:w-auto"
                 value={filters.search}
                 onChange={(e) => setFilters((f) => ({ ...f, search: e.target.value }))}
               />
@@ -656,7 +649,8 @@ export default function DashboardPage() {
                 onClick={() =>
                   setFilters({ gen: filters.gen, kelas: "", bulan: "", status: "", search: "" })
                 }
-                className="btn btn-ghost min-h-[44px] min-w-[44px] px-2 py-2 text-slate-500"
+                className="btn btn-ghost min-h-[44px] min-w-[44px] px-2 py-2"
+                title="Hapus filter"
               >
                 <FilterX className="h-4 w-4" />
               </button>
@@ -666,7 +660,7 @@ export default function DashboardPage() {
                 loadRecords();
                 loadFilterOptions(filters.gen);
               }}
-              className="btn btn-ghost min-h-[44px] min-w-[44px] px-2 py-2 text-slate-500"
+              className="btn btn-ghost min-h-[44px] min-w-[44px] px-2 py-2"
               title="Muat ulang data"
             >
               <RefreshCw className="h-4 w-4" />
@@ -688,13 +682,13 @@ export default function DashboardPage() {
         <div className="card mt-4 overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-              <span className="ml-2 text-sm text-slate-500 dark:text-slate-400">Memuat data...</span>
+              <Loader2 className="h-5 w-5 animate-spin text-accent" />
+              <span className="ml-2 text-sm font-medium text-muted">Memuat data...</span>
             </div>
           ) : records.length === 0 ? (
             <div className="py-16 text-center">
-              <Users className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600" />
-              <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">Belum ada data.</p>
+              <Users className="mx-auto h-8 w-8 text-muted" />
+              <p className="mt-2 text-sm font-medium text-muted">Belum ada data.</p>
             </div>
           ) : (
             <>
@@ -717,22 +711,22 @@ export default function DashboardPage() {
                       const rowIdx = (page - 1) * PAGE_SIZE + i;
                       return (
                         <tr key={`${r._gen}-${r.tanggal}-${r.nama}-${i}`}>
-                          <td className="text-slate-400 tabular-nums">
+                          <td className="text-muted tabular-nums">
                             {(page - 1) * PAGE_SIZE + i + 1}
                           </td>
-                          <td className="whitespace-nowrap text-slate-600 dark:text-slate-400">{r.tanggal}</td>
-                          <td className="font-medium uppercase text-slate-900 dark:text-slate-100">{r.nama}</td>
-                          <td className="text-slate-600 dark:text-slate-400">{r.kelas}</td>
+                          <td className="whitespace-nowrap text-muted">{r.tanggal}</td>
+                          <td className="font-medium uppercase text-foreground">{r.nama}</td>
+                          <td className="text-muted">{r.kelas}</td>
                           <td>
                             <span
                               className={`badge ${
                                 r.statusAbsen === "Hadir"
-                                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"
+                                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300"
                                   : r.statusAbsen === "Sakit"
-                                  ? "bg-amber-50 text-amber-700 dark:bg-amber-900 dark:text-amber-300"
+                                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-300"
                                   : r.statusAbsen === "Izin"
-                                  ? "bg-orange-50 text-orange-700 dark:bg-orange-900 dark:text-orange-300"
-                                  : "bg-red-50 text-red-700 dark:bg-red-900 dark:text-red-300"
+                                  ? "bg-accent/15 text-accent dark:text-accent"
+                                  : "bg-danger/15 text-danger"
                               }`}
                             >
                               {r.statusAbsen}
@@ -742,7 +736,7 @@ export default function DashboardPage() {
                             {r.nominalKas > 0 ? formatRupiah(r.nominalKas) : "—"}
                           </td>
                           <td>
-                            <span className="badge bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                            <span className="badge border-border bg-surface-2 text-muted">
                               {r._gen}
                             </span>
                           </td>
@@ -750,7 +744,7 @@ export default function DashboardPage() {
                             <div className="inline-flex items-center gap-0.5">
                               <button
                                 onClick={() => openEditModal(r, rowIdx)}
-                                className="btn btn-ghost min-h-[44px] min-w-[44px] p-2 text-slate-400 hover:text-blue-600"
+                                className="btn btn-ghost min-h-[44px] min-w-[44px] p-2 text-muted hover:!text-accent"
                                 title="Edit"
                               >
                                 <Pencil className="h-4 w-4" />
@@ -763,7 +757,7 @@ export default function DashboardPage() {
                                     record: r,
                                   })
                                 }
-                                className="btn btn-ghost min-h-[44px] min-w-[44px] p-2 text-slate-400 hover:text-red-600"
+                                className="btn btn-ghost min-h-[44px] min-w-[44px] p-2 text-muted hover:!text-danger"
                                 title="Hapus"
                               >
                                 <Trash2 className="h-4 w-4" />
@@ -780,21 +774,21 @@ export default function DashboardPage() {
               {/* Pagination */}
               {totalPages > 1 && (
                 <>
-                  <div className="border-t border-slate-100 px-4 py-3 dark:border-slate-700">
-                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                  <div className="flex items-center justify-between gap-2 border-t-2 border-border px-4 py-3">
+                    <p className="text-xs font-medium text-muted">
                       Menampilkan{" "}
-                      <span className="font-semibold text-slate-700 tabular-nums dark:text-slate-300">
+                      <span className="font-bold text-foreground tabular-nums">
                         {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, records.length)}
                       </span>{" "}
                       dari{" "}
-                      <span className="font-semibold text-slate-700 tabular-nums dark:text-slate-300">{records.length}</span>{" "}
+                      <span className="font-bold text-foreground tabular-nums">{records.length}</span>{" "}
                       data
                     </p>
                     <div className="flex items-center gap-1">
                       <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page <= 1} className="btn btn-ghost min-h-[44px] min-w-[44px] p-2" aria-label="Halaman sebelumnya">
                         <ChevronLeft className="h-5 w-5" />
                       </button>
-                      <span className="px-2 text-sm font-medium text-slate-600 tabular-nums dark:text-slate-400">
+                      <span className="px-2 text-sm font-bold text-foreground tabular-nums">
                         {page} / {totalPages}
                       </span>
                       <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page >= totalPages} className="btn btn-ghost min-h-[44px] min-w-[44px] p-2" aria-label="Halaman berikutnya">
@@ -814,42 +808,53 @@ export default function DashboardPage() {
         <div className="mt-5 space-y-4">
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
             <div className="card p-5">
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+              <h2 className="font-display text-sm font-bold uppercase tracking-wide text-foreground">
                 Distribusi Kehadiran
               </h2>
               {stats.totalRecords === 0 ? (
-                <p className="py-6 text-center text-xs text-slate-400">Belum ada data.</p>
+                <p className="py-6 text-center text-xs text-muted">Belum ada data.</p>
               ) : (
                 <div className="mt-4 space-y-3">
                   <ProgressBarRow label="Hadir" count={stats.hadirCount} total={stats.totalRecords} fillClass="bg-emerald-500" />
-                  <ProgressBarRow label="Sakit" count={stats.sakitCount} total={stats.totalRecords} fillClass="bg-amber-500" />
-                  <ProgressBarRow label="Izin" count={stats.izinCount} total={stats.totalRecords} fillClass="bg-orange-500" />
-                  <ProgressBarRow label="Alfa" count={stats.alfaCount} total={stats.totalRecords} fillClass="bg-rose-500" />
+                  <ProgressBarRow label="Sakit" count={stats.sakitCount} total={stats.totalRecords} fillClass="bg-amber-400" />
+                  <ProgressBarRow label="Izin" count={stats.izinCount} total={stats.totalRecords} fillClass="bg-accent" />
+                  <ProgressBarRow label="Alfa" count={stats.alfaCount} total={stats.totalRecords} fillClass="bg-danger" />
                 </div>
               )}
             </div>
             <div className="card p-5">
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Ringkasan Keuangan Kas</h2>
+              <h2 className="font-display text-sm font-bold uppercase tracking-wide text-foreground">
+                Ringkasan Keuangan Kas
+              </h2>
               <div className="mt-4 grid grid-cols-2 gap-3">
                 <StatCard label="Total Kas Terkumpul" value={formatRupiah(stats.totalKas)} />
                 <StatCard label="Rata-rata / Catatan" value={formatRupiah(stats.avgKasPerStudent)} />
               </div>
-              <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3.5 dark:border-slate-700 dark:bg-slate-800">
+              <div className="mt-3 rounded-lg border-2 border-border bg-surface-2 p-3.5">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-medium text-slate-700 dark:text-slate-300">Tingkat Kehadiran</p>
-                  <span className="text-base font-semibold text-slate-900 tabular-nums dark:text-slate-100">{stats.attendanceRate}%</span>
+                  <p className="text-xs font-bold uppercase tracking-wide text-foreground">
+                    Tingkat Kehadiran
+                  </p>
+                  <span className="text-base font-extrabold text-foreground tabular-nums">
+                    <span>{stats.attendanceRate}%</span>
+                  </span>
                 </div>
-                <div className="mt-2 h-2 w-full rounded-full bg-slate-200 dark:bg-slate-700">
-                  <div className="h-full rounded-full bg-navy-600 dark:bg-navy-400" style={{ width: `${stats.attendanceRate}%` }} />
+                <div className="mt-2 h-2.5 w-full rounded-full bg-border">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-accent to-accent-2"
+                    style={{ width: `${stats.attendanceRate}%` }}
+                  />
                 </div>
               </div>
             </div>
           </div>
 
           <div className="card p-5">
-            <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Rekap Kas per Kelas</h2>
+            <h2 className="font-display text-sm font-bold uppercase tracking-wide text-foreground">
+              Rekap Kas per Kelas
+            </h2>
             {stats.classSummaries.length === 0 ? (
-              <p className="py-6 text-center text-xs text-slate-400">Belum ada rekap per kelas.</p>
+              <p className="py-6 text-center text-xs text-muted">Belum ada rekap per kelas.</p>
             ) : (
               <div className="mt-3 overflow-x-auto">
                 <table className="data-table">
@@ -864,10 +869,10 @@ export default function DashboardPage() {
                   <tbody>
                     {stats.classSummaries.map((cs) => (
                       <tr key={cs.kelas}>
-                        <td className="font-medium text-slate-900 dark:text-slate-100">{cs.kelas}</td>
-                        <td className="text-slate-600 tabular-nums dark:text-slate-400">{cs.totalRecords}</td>
-                        <td className="text-slate-600 tabular-nums dark:text-slate-400">{cs.hadirCount}</td>
-                        <td className="font-medium text-slate-900 tabular-nums dark:text-slate-100">{formatRupiah(cs.totalKas)}</td>
+                        <td className="font-medium text-foreground">{cs.kelas}</td>
+                        <td className="text-muted tabular-nums">{cs.totalRecords}</td>
+                        <td className="text-muted tabular-nums">{cs.hadirCount}</td>
+                        <td className="font-medium text-foreground tabular-nums">{formatRupiah(cs.totalKas)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -878,7 +883,9 @@ export default function DashboardPage() {
 
           {filters.gen === "semua" && genSummaries.length > 0 && (
             <div className="card p-5">
-              <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Rekap per Gen</h2>
+              <h2 className="font-display text-sm font-bold uppercase tracking-wide text-foreground">
+                Rekap per Gen
+              </h2>
               <div className="mt-3 overflow-x-auto">
                 <table className="data-table">
                   <thead>
@@ -893,17 +900,23 @@ export default function DashboardPage() {
                   <tbody>
                     {genSummaries.map((gs) => (
                       <tr key={gs.gen} className={gs.isLulus ? "opacity-60" : ""}>
-                        <td className="font-medium text-slate-900 dark:text-slate-100">Gen {gs.gen}</td>
+                        <td className="font-medium text-foreground">
+                          <span className="font-display font-extrabold">Gen {gs.gen}</span>
+                        </td>
                         <td>
                           {gs.isLulus ? (
-                            <span className="badge bg-amber-50 text-amber-700 dark:bg-amber-900 dark:text-amber-300">Lulus</span>
+                            <span className="badge border-amber-400/40 bg-amber-400/15 text-amber-600 dark:text-amber-300">
+                              Lulus
+                            </span>
                           ) : (
-                            <span className="badge bg-emerald-50 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">Aktif</span>
+                            <span className="badge border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-300">
+                              Aktif
+                            </span>
                           )}
                         </td>
-                        <td className="text-slate-600 tabular-nums dark:text-slate-400">{gs.total}</td>
-                        <td className="text-slate-600 tabular-nums dark:text-slate-400">{gs.hadir}</td>
-                        <td className="font-medium text-slate-900 tabular-nums dark:text-slate-100">{formatRupiah(gs.kas)}</td>
+                        <td className="text-muted tabular-nums">{gs.total}</td>
+                        <td className="text-muted tabular-nums">{gs.hadir}</td>
+                        <td className="font-medium text-foreground tabular-nums">{formatRupiah(gs.kas)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -926,10 +939,12 @@ export default function DashboardPage() {
 
       {/* Edit modal */}
       {editModal.open && editModal.record && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
-          <div className="card w-full max-w-md p-6">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Edit Data Absensi</h3>
-            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 p-4">
+          <div className="card w-full max-w-md p-6 hard-shadow">
+            <h3 className="font-display text-lg font-extrabold uppercase tracking-tight text-foreground">
+              Edit Data Absensi
+            </h3>
+            <p className="mt-0.5 text-xs font-semibold uppercase tracking-wide text-muted">
               {editModal.record.nama} — Gen {editModal.record._gen}
             </p>
 

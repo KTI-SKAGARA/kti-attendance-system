@@ -38,26 +38,31 @@ export default function LoginPage() {
     <div className="flex min-h-dvh items-center justify-center py-12 px-4">
       <div className="w-full max-w-sm animate-page">
         <div className="mb-6 text-center">
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
-            Login Admin KTI SKAGARA
+          <img
+            src="/logo-kti.jpg"
+            alt="Logo KTI SKAGARA"
+            className="mx-auto h-14 w-14 rounded-2xl border-2 border-foreground/20 shadow-[3px_3px_0_0_var(--color-shadow)]"
+          />
+          <h1 className="mt-3 font-display text-2xl font-extrabold uppercase tracking-tight text-foreground">
+            Login Admin
           </h1>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Absensi &amp; Kas Rutin — SMK Negeri 3 Jepara
+          <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-muted">
+            KTI SKAGARA — SMK Negeri 3 Jepara
           </p>
         </div>
 
-        <form onSubmit={handleLogin} className="card p-6 space-y-4">
+        <form onSubmit={handleLogin} className="card p-6 hard-shadow space-y-4">
           <div>
             <label htmlFor="admin-password" className="label">
               Password
             </label>
             <div className="relative">
-              <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <KeyRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
               <input
                 id="admin-password"
                 type={showPassword ? "text" : "password"}
                 className={`input pl-9 pr-10 ${
-                  error ? "!border-red-500 focus:!ring-red-500/20" : ""
+                  error ? "!border-danger focus:!ring-danger/20" : ""
                 }`}
                 placeholder="Masukkan password admin..."
                 value={password}
@@ -70,7 +75,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-muted hover:text-accent"
                 aria-label="Tampilkan password"
               >
                 {showPassword ? (
@@ -81,7 +86,7 @@ export default function LoginPage() {
               </button>
             </div>
             {error && (
-              <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-red-600 dark:text-red-400">
+              <p className="mt-2 flex items-center gap-1.5 text-xs font-bold text-danger">
                 <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                 {error}
               </p>
@@ -91,7 +96,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="btn btn-primary w-full min-h-[48px] py-3 text-sm font-semibold"
+            className="btn btn-primary w-full min-h-[48px] py-3 text-sm"
           >
             {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
             {submitting ? "Memverifikasi..." : "Masuk"}
