@@ -3,7 +3,7 @@
 import { Loader2, AlertTriangle } from "lucide-react";
 import type { AttendanceRecord, Gen } from "@/types/attendance";
 
-type TaggedRecord = AttendanceRecord & { _gen: Gen };
+type TaggedRecord = AttendanceRecord & { _gen: Gen; _rawIdx: number };
 
 interface DeleteConfirmModalProps {
   record: TaggedRecord;

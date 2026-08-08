@@ -387,6 +387,36 @@ export async function deleteRecord(
   }
 }
 
+export async function deleteRecordsBatch(
+  gen: Gen,
+  recordIndexes: number[]
+): Promise<void> {
+  const sorted = [...recordIndexes].sort((a, b) => b - a);
+
+  if (!isGoogleSheetsConfigured()) {
+    const mockList = getMockDataForGen(gen);
+    const mockLen = mockList.length;
+    for (const idx of sorted) {
+      if (idx < mockLen) continue;
+      const appendedIdx = idx - mockLen;
+      if (mockAppended[gen] && appendedIdx >= 0 && appendedIdx < mockAppended[gen].length) {
+        mockAppended[gen].splice(appendedIdx, 1);
+      }
+    }
+    return;
+  }
+
+  const tabName = getGenTabName(gen);
+  const sheet = await getSheet(tabName);
+  const rows = await sheet.getRows();
+
+  for (const idx of sorted) {
+    if (idx >= 0 && idx < rows.length) {
+      await rows[idx].delete();
+    }
+  }
+}
+
 export async function updateRecord(
   gen: Gen,
   recordIndex: number,

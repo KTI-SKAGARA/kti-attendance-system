@@ -17,10 +17,11 @@ import {
   getFilterOptions,
   getDashboardStats,
   deleteAttendanceRecord,
+  deleteBatchAttendanceRecords,
   updateAttendanceRecord,
   getGenList,
 } from "@/app/actions/attendance";
-import { formatRupiah, formatBulanTahun } from "@/lib/utils";
+import { formatRupiah, formatBulanTahun, getTodayFormatted } from "@/lib/utils";
 import { APP_NAME, PAGE_SIZE, TOAST_DURATION } from "@/lib/constants";
 import {
   Search,
@@ -37,15 +38,19 @@ import {
   Users,
   Archive,
   Pencil,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import Link from "next/link";
 import * as XLSX from "xlsx";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
+import StudentDetailModal from "@/components/StudentDetailModal";
 import Toast from "@/components/Toast";
 import StatCard from "@/components/StatCard";
 import ProgressBarRow from "@/components/ProgressBarRow";
+import AttendanceTrendChart from "@/components/AttendanceTrendChart";
 
-type TaggedRecord = AttendanceRecord & { _gen: Gen };
+type TaggedRecord = AttendanceRecord & { _gen: Gen; _rawIdx: number };
 
 const EMPTY_STATS: DashboardStats = {
   totalRecords: 0,
@@ -99,6 +104,12 @@ export default function DashboardPage() {
   const [editStatus, setEditStatus] = useState<StatusAbsen>("Hadir");
   const [editKas, setEditKas] = useState(0);
   const [editing, setEditing] = useState(false);
+
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkDeleteModal, setBulkDeleteModal] = useState(false);
+
+  const [studentDetail, setStudentDetail] = useState<string | null>(null);
 
   const [toast, setToast] = useState<{
     type: "success" | "error";
@@ -188,13 +199,17 @@ export default function DashboardPage() {
         );
         iterGens.forEach((g, i) => {
           if (results[i].success && results[i].data) {
-            results[i].data!.forEach((r) => tagged.push({ ...r, _gen: g }));
+            results[i].data!.forEach((r, idx) =>
+              tagged.push({ ...r, _gen: g, _rawIdx: idx })
+            );
           }
         });
       } else {
         const res = await getAttendanceRecords(filters.gen);
         if (res.success && res.data) {
-          res.data.forEach((r) => tagged.push({ ...r, _gen: filters.gen as Gen }));
+          res.data.forEach((r, idx) =>
+            tagged.push({ ...r, _gen: filters.gen as Gen, _rawIdx: idx })
+          );
         }
       }
 
@@ -277,8 +292,8 @@ export default function DashboardPage() {
   };
 
   // Edit handler
-  const openEditModal = (record: TaggedRecord, globalIndex: number) => {
-    setEditModal({ open: true, index: globalIndex, record });
+  const openEditModal = (record: TaggedRecord) => {
+    setEditModal({ open: true, index: record._rawIdx, record });
     setEditNama(record.nama);
     setEditKelas(record.kelas);
     setEditStatus(record.statusAbsen);
@@ -309,6 +324,71 @@ export default function DashboardPage() {
       setTimeout(() => setToast(null), TOAST_DURATION);
     }
   };
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(records.length / PAGE_SIZE));
+  const paginatedRecords = records.slice(
+    (page - 1) * PAGE_SIZE,
+    page * PAGE_SIZE
+  );
+
+  // Bulk delete handler
+  const confirmBulkDelete = async () => {
+    if (selectedKeys.size === 0) return;
+    setBulkDeleting(true);
+
+    const grouped = new Map<Gen, number[]>();
+    for (const record of records) {
+      const key = `${record._gen}|${record._rawIdx}`;
+      if (selectedKeys.has(key)) {
+        const arr = grouped.get(record._gen) || [];
+        arr.push(record._rawIdx);
+        grouped.set(record._gen, arr);
+      }
+    }
+
+    try {
+      let allOk = true;
+      for (const [gen, indexes] of grouped) {
+        const res = await deleteBatchAttendanceRecords(gen, indexes);
+        if (!res.success) allOk = false;
+      }
+      if (allOk) {
+        setToast({ type: "success", message: `${selectedKeys.size} catatan berhasil dihapus.` });
+        setSelectedKeys(new Set());
+        loadRecords();
+      } else {
+        setToast({ type: "error", message: "Gagal menghapus beberapa data." });
+        loadRecords();
+      }
+    } catch {
+      setToast({ type: "error", message: "Gagal menghapus data." });
+    } finally {
+      setBulkDeleting(false);
+      setBulkDeleteModal(false);
+      setTimeout(() => setToast(null), TOAST_DURATION);
+    }
+  };
+
+  const toggleSelectRecord = (key: string) => {
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedKeys.size === paginatedRecords.length) {
+      setSelectedKeys(new Set());
+    } else {
+      const keys = paginatedRecords.map((r) => `${r._gen}|${r._rawIdx}`);
+      setSelectedKeys(new Set(keys));
+    }
+  };
+
+  const allSelected = paginatedRecords.length > 0 && selectedKeys.size === paginatedRecords.length;
 
   // Export per gen per bulan — Excel format
   const exportToExcel = () => {
@@ -488,13 +568,6 @@ export default function DashboardPage() {
     }
   };
 
-  // Pagination
-  const totalPages = Math.max(1, Math.ceil(records.length / PAGE_SIZE));
-  const paginatedRecords = useMemo(
-    () => records.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [records, page]
-  );
-
   // Stats per gen (when "semua")
   const genSummaries = useMemo(() => {
     if (filters.gen !== "semua") return [];
@@ -514,6 +587,19 @@ export default function DashboardPage() {
       }))
       .sort((a, b) => Number(a.gen) - Number(b.gen));
   }, [allRecords, filters.gen, genList]);
+
+  const todayStats = useMemo(() => {
+    const today = getTodayFormatted();
+    const todayRecords = allRecords.filter((r) => r.tanggal === today);
+    const [dd, mm, yyyy] = today.split("/");
+    const total = todayRecords.length;
+    const hadir = todayRecords.filter((r) => r.statusAbsen === "Hadir").length;
+    const sakit = todayRecords.filter((r) => r.statusAbsen === "Sakit").length;
+    const izin = todayRecords.filter((r) => r.statusAbsen === "Izin").length;
+    const alfa = todayRecords.filter((r) => r.statusAbsen === "Alfa").length;
+    const kas = todayRecords.reduce((sum, r) => sum + r.nominalKas, 0);
+    return { today, dateLabel: `${dd} ${formatBulanTahun(`${mm}-${yyyy}`)}`, total, hadir, sakit, izin, alfa, kas };
+  }, [allRecords]);
 
   const hasActiveFilter =
     filters.kelas || filters.bulan || filters.status || filters.search;
@@ -558,6 +644,40 @@ export default function DashboardPage() {
             Input Data
           </Link>
         </div>
+      </div>
+
+      {/* Hari ini */}
+      <div className="card mt-4 p-4">
+        <div className="flex items-center justify-between">
+          <p className="text-xs font-bold uppercase tracking-wide text-muted">
+            Hari ini — {todayStats.dateLabel}
+          </p>
+        </div>
+        {todayStats.total === 0 ? (
+          <p className="mt-2 text-xs text-muted">Belum ada catatan hari ini.</p>
+        ) : (
+          <div className="mt-2.5 flex flex-wrap gap-2">
+            {[
+              { label: "Total", value: todayStats.total, cls: "bg-surface-2 text-foreground" },
+              { label: "Hadir", value: todayStats.hadir, cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-300" },
+              { label: "Sakit", value: todayStats.sakit, cls: "bg-amber-500/15 text-amber-600 dark:text-amber-300" },
+              { label: "Izin", value: todayStats.izin, cls: "bg-accent/15 text-accent" },
+              { label: "Alfa", value: todayStats.alfa, cls: "bg-danger/15 text-danger" },
+            ].map((s) => (
+              <span
+                key={s.label}
+                className={`badge ${s.cls} min-w-[48px] justify-center`}
+              >
+                {s.label} {s.value}
+              </span>
+            ))}
+            {todayStats.kas > 0 && (
+              <span className="badge bg-accent/10 text-accent min-w-[48px] justify-center">
+                Kas {formatRupiah(todayStats.kas)}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Filters */}
@@ -696,6 +816,19 @@ export default function DashboardPage() {
                 <table className="data-table">
                   <thead>
                     <tr>
+                      <th className="w-10">
+                        <button
+                          onClick={toggleSelectAll}
+                          className="btn btn-ghost min-h-[44px] min-w-[44px] p-2"
+                          title={allSelected ? "Batalkan semua" : "Pilih semua"}
+                        >
+                          {allSelected ? (
+                            <CheckSquare className="h-4 w-4 text-accent" />
+                          ) : (
+                            <Square className="h-4 w-4" />
+                          )}
+                        </button>
+                      </th>
                       <th className="w-10">No</th>
                       <th>Tanggal</th>
                       <th>Nama</th>
@@ -708,14 +841,33 @@ export default function DashboardPage() {
                   </thead>
                   <tbody>
                     {paginatedRecords.map((r, i) => {
-                      const rowIdx = (page - 1) * PAGE_SIZE + i;
                       return (
-                        <tr key={`${r._gen}-${r.tanggal}-${r.nama}-${i}`}>
+                        <tr key={`${r._gen}-${r.tanggal}-${r.nama}-${r._rawIdx}`}>
+                          <td>
+                            <button
+                              onClick={() => toggleSelectRecord(`${r._gen}|${r._rawIdx}`)}
+                              className="btn btn-ghost min-h-[44px] min-w-[44px] p-2"
+                              title="Pilih"
+                            >
+                              {selectedKeys.has(`${r._gen}|${r._rawIdx}`) ? (
+                                <CheckSquare className="h-4 w-4 text-accent" />
+                              ) : (
+                                <Square className="h-4 w-4" />
+                              )}
+                            </button>
+                          </td>
                           <td className="text-muted tabular-nums">
                             {(page - 1) * PAGE_SIZE + i + 1}
                           </td>
                           <td className="whitespace-nowrap text-muted">{r.tanggal}</td>
-                          <td className="font-medium uppercase text-foreground">{r.nama}</td>
+                          <td>
+                            <button
+                              onClick={() => setStudentDetail(r.nama)}
+                              className="font-medium uppercase text-foreground underline decoration-accent/40 decoration-dashed underline-offset-2 hover:text-accent hover:decoration-accent"
+                            >
+                              {r.nama}
+                            </button>
+                          </td>
                           <td className="text-muted">{r.kelas}</td>
                           <td>
                             <span
@@ -743,7 +895,7 @@ export default function DashboardPage() {
                           <td className="whitespace-nowrap text-right">
                             <div className="inline-flex items-center gap-0.5">
                               <button
-                                onClick={() => openEditModal(r, rowIdx)}
+                                onClick={() => openEditModal(r)}
                                 className="btn btn-ghost min-h-[44px] min-w-[44px] p-2 text-muted hover:!text-accent"
                                 title="Edit"
                               >
@@ -753,7 +905,7 @@ export default function DashboardPage() {
                                 onClick={() =>
                                   setDeleteModal({
                                     open: true,
-                                    index: rowIdx,
+                                    index: r._rawIdx,
                                     record: r,
                                   })
                                 }
@@ -770,6 +922,30 @@ export default function DashboardPage() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Bulk action bar */}
+              {selectedKeys.size > 0 && (
+                <div className="flex items-center justify-between gap-3 border-t-2 border-border bg-accent/5 px-4 py-3">
+                  <p className="text-xs font-bold uppercase tracking-wide text-foreground">
+                    {selectedKeys.size} catatan dipilih
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setSelectedKeys(new Set())}
+                      className="btn btn-ghost min-h-[44px] px-3 py-2 text-sm"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      onClick={() => setBulkDeleteModal(true)}
+                      className="btn btn-danger min-h-[44px] px-3 py-2 text-sm"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Hapus Terpilih
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Pagination */}
               {totalPages > 1 && (
@@ -924,6 +1100,26 @@ export default function DashboardPage() {
               </div>
             </div>
           )}
+
+          {/* Trend Chart */}
+          <div className="card p-5">
+            <h2 className="font-display text-sm font-bold uppercase tracking-wide text-foreground">
+              Trend Kehadiran per Bulan
+            </h2>
+            <div className="mt-4">
+              <AttendanceTrendChart records={allRecords} />
+            </div>
+            <div className="mt-3 flex items-center justify-center gap-4 text-[10px] font-bold uppercase tracking-wide text-muted">
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block h-2.5 w-4 rounded-sm bg-accent/20" />
+                Jumlah Catatan
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="inline-block h-0.5 w-4 rounded bg-accent" />
+                % Kehadiran
+              </span>
+            </div>
+          </div>
         </div>
       )}
 
@@ -934,6 +1130,53 @@ export default function DashboardPage() {
           deleting={deleting}
           onConfirm={confirmDeleteRecord}
           onCancel={() => setDeleteModal({ open: false, index: -1, record: null })}
+        />
+      )}
+
+      {/* Bulk delete modal */}
+      {bulkDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/50 p-4">
+          <div className="card w-full max-w-sm p-6 hard-shadow">
+            <div className="flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-danger/40 bg-danger/15">
+                <Trash2 className="h-4.5 w-4.5 text-danger" />
+              </div>
+              <div>
+                <h3 className="font-display text-base font-extrabold uppercase tracking-tight text-foreground">
+                  Hapus {selectedKeys.size} catatan?
+                </h3>
+                <p className="mt-0.5 text-xs font-medium text-muted">
+                  Tindakan ini tidak dapat dibatalkan.
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                onClick={() => setBulkDeleteModal(false)}
+                disabled={bulkDeleting}
+                className="btn btn-secondary min-h-[44px] px-4 py-2 text-sm"
+              >
+                Batal
+              </button>
+              <button
+                onClick={confirmBulkDelete}
+                disabled={bulkDeleting}
+                className="btn btn-danger min-h-[44px] px-4 py-2 text-sm"
+              >
+                {bulkDeleting && <Loader2 className="h-4 w-4 animate-spin" />}
+                {bulkDeleting ? "Menghapus..." : "Hapus Semua"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Student detail modal */}
+      {studentDetail && (
+        <StudentDetailModal
+          nama={studentDetail}
+          records={allRecords}
+          onClose={() => setStudentDetail(null)}
         />
       )}
 
