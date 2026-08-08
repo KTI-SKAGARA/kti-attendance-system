@@ -2,11 +2,10 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import {
-  type AngkatanType,
+  type Gen,
   type StatusAbsen,
   type StudentOption,
-  ANGKATAN_OPTIONS,
-  STATUS_ABSEN_OPTIONS,
+  type GenConfig,
   SKAGARA_CLASSES,
   KAS_RUTIN_DEFAULT,
 } from "@/types/attendance";
@@ -15,6 +14,7 @@ import {
   submitBulkAttendance,
   getExistingStudents,
   getFilterOptions,
+  getGenList,
 } from "@/app/actions/attendance";
 import { getTodayISO, parseISOTanggal, normalizeName, formatRupiah } from "@/lib/utils";
 import { APP_NAME, SCHOOL_NAME, TOAST_DURATION } from "@/lib/constants";
@@ -28,8 +28,6 @@ import {
   User,
   ListChecks,
   PenLine,
-  Check,
-  X,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -44,7 +42,8 @@ interface QuickStudent {
 
 export default function InputPage() {
   const [mode, setMode] = useState<InputMode>("normal");
-  const [angkatan, setAngkatan] = useState<AngkatanType>("10");
+  const [gen, setGen] = useState<Gen>("");
+  const [genList, setGenList] = useState<GenConfig[]>([]);
   const [kelas, setKelas] = useState("");
   const [tanggal, setTanggal] = useState(getTodayISO());
 
@@ -69,15 +68,43 @@ export default function InputPage() {
   const [checkedMap, setCheckedMap] = useState<Record<string, boolean>>({});
   const [kasMap, setKasMap] = useState<Record<string, number>>({});
 
-  const availableClasses = Array.from(
-    new Set([...SKAGARA_CLASSES, ...existingClasses])
-  ).sort((a, b) => a.localeCompare(b, "id"));
+  // Active gens only (for dropdown)
+  const activeGens = useMemo(
+    () => genList.filter((g) => g.status === "aktif").map((g) => g.gen),
+    [genList]
+  );
 
-  const loadAngkatanData = useCallback(async (selectedAngkatan: AngkatanType) => {
+  // Load gen list
+  const loadGenList = useCallback(async () => {
+    try {
+      const res = await getGenList();
+      if (res.success && res.data) {
+        setGenList(res.data);
+        // Auto-select first active gen
+        const firstActive = res.data.find((g) => g.status === "aktif");
+        if (firstActive) setGen(firstActive.gen);
+      }
+    } catch {
+      // silent
+    }
+  }, []);
+
+  useEffect(() => {
+    loadGenList(); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [loadGenList]);
+
+  // All classes: 39 official + whatever is in the sheet
+  const availableClasses = useMemo(() => {
+    const official = [...SKAGARA_CLASSES];
+    const all = new Set([...official, ...existingClasses]);
+    return Array.from(all).sort((a, b) => a.localeCompare(b, "id"));
+  }, [existingClasses]);
+
+  const loadGenData = useCallback(async (selectedGen: Gen) => {
     try {
       const [studentRes, filterRes] = await Promise.all([
-        getExistingStudents(selectedAngkatan),
-        getFilterOptions(selectedAngkatan),
+        getExistingStudents(selectedGen),
+        getFilterOptions(selectedGen),
       ]);
 
       if (studentRes.success && studentRes.data) {
@@ -98,10 +125,10 @@ export default function InputPage() {
   }, []);
 
   useEffect(() => {
-    loadAngkatanData(angkatan); // eslint-disable-line react-hooks/set-state-in-effect
-  }, [angkatan, loadAngkatanData]);
+    if (gen) loadGenData(gen); // eslint-disable-line react-hooks/set-state-in-effect
+  }, [gen, loadGenData]);
 
-  // When kelas changes in quick mode, populate the checklist
+  // Students for selected class (quick mode)
   const studentsForKelas = useMemo(() => {
     if (!kelas) return [];
     return existingStudents
@@ -109,7 +136,6 @@ export default function InputPage() {
       .sort((a, b) => a.nama.localeCompare(b.nama, "id"));
   }, [existingStudents, kelas]);
 
-  // When kelas changes in quick mode, derive the checklist
   const quickStudents: QuickStudent[] = useMemo(() => {
     if (mode !== "cepat" || !kelas) return [];
     return studentsForKelas.map((s) => ({
@@ -182,6 +208,7 @@ export default function InputPage() {
 
   const validate = (): boolean => {
     const e: Record<string, string> = {};
+    if (!gen) e.gen = "Pilih gen terlebih dahulu.";
     if (!nama.trim()) e.nama = "Nama siswa wajib diisi.";
     if (!kelas.trim()) e.kelas = "Pilih kelas terlebih dahulu.";
     if (kasRules.wajib && !bayarKas) {
@@ -206,7 +233,7 @@ export default function InputPage() {
     const savedNama = normalizeName(nama);
 
     const res = await submitAttendanceRecord({
-      angkatan,
+      gen,
       kelas: kelas.trim(),
       nama: savedNama,
       tanggal: parseISOTanggal(tanggal),
@@ -230,7 +257,7 @@ export default function InputPage() {
       setNominalKas(`${KAS_RUTIN_DEFAULT}`);
       setErrors({});
 
-      loadAngkatanData(angkatan);
+      loadGenData(gen);
     } else {
       setToast({
         type: "error",
@@ -257,10 +284,6 @@ export default function InputPage() {
   };
 
   const toggleAllQuick = (checked: boolean) => {
-    const map: Record<string, boolean> = {};
-    for (const s of quickStudents) {
-      map[s.nama] = checked;
-    }
     setCheckedMap((prev) => {
       const next = { ...prev };
       for (const s of quickStudents) {
@@ -286,7 +309,7 @@ export default function InputPage() {
     setToast(null);
 
     const res = await submitBulkAttendance(
-      angkatan,
+      gen,
       kelas.trim(),
       parseISOTanggal(tanggal),
       hadir.map((s) => ({
@@ -306,7 +329,7 @@ export default function InputPage() {
       });
       setCheckedMap({});
       setKasMap({});
-      loadAngkatanData(angkatan);
+      loadGenData(gen);
     } else {
       setToast({
         type: "error",
@@ -320,7 +343,7 @@ export default function InputPage() {
   // ---- Shared handlers ----
 
   const resetForm = () => {
-    setAngkatan("10");
+    setGen(activeGens[0] ?? "");
     setKelas("");
     setNama("");
     setTanggal(getTodayISO());
@@ -333,17 +356,12 @@ export default function InputPage() {
     setToast(null);
   };
 
-  const handleAngkatanChange = (newAngkatan: AngkatanType) => {
-    setAngkatan(newAngkatan);
+  const handleGenChange = (newGen: Gen) => {
+    setGen(newGen);
     setKelas("");
     setNama("");
     setCheckedMap({});
     setKasMap({});
-  };
-
-  const handleKelasChange = (newKelas: string) => {
-    setKelas(newKelas);
-    if (errors.kelas) setErrors((prev) => ({ ...prev, kelas: "" }));
   };
 
   return (
@@ -391,30 +409,39 @@ export default function InputPage() {
         </button>
       </div>
 
-      {/* Shared: Angkatan + Kelas + Tanggal */}
+      {/* Shared: Gen + Kelas + Tanggal */}
       <div className="card mt-4 p-6 space-y-4 sm:p-8">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <div>
-            <label htmlFor="input-angkatan" className="label">
-              Angkatan <span className="text-red-500">*</span>
+            <label htmlFor="input-gen" className="label">
+              Gen <span className="text-red-500">*</span>
             </label>
             <select
-              id="input-angkatan"
-              className="select"
-              value={angkatan}
-              onChange={(e) => handleAngkatanChange(e.target.value as AngkatanType)}
+              id="input-gen"
+              className={`select ${
+                errors.gen ? "!border-red-500 focus:!ring-red-500/20" : ""
+              }`}
+              value={gen}
+              onChange={(e) => handleGenChange(e.target.value)}
             >
-              {ANGKATAN_OPTIONS.map((a) => (
-                <option key={a} value={a}>
-                  Angkatan {a}
+              <option value="">-- Pilih Gen --</option>
+              {activeGens.map((g) => (
+                <option key={g} value={g}>
+                  Gen {g}
                 </option>
               ))}
             </select>
+            {errors.gen && (
+              <p className="mt-1 flex items-center gap-1 text-xs text-red-600">
+                <AlertCircle className="h-3 w-3" />
+                {errors.gen}
+              </p>
+            )}
           </div>
 
           <div>
             <label htmlFor="input-kelas" className="label">
-              Nama Kelas <span className="text-red-500">*</span>
+              Kelas <span className="text-red-500">*</span>
             </label>
             <select
               id="input-kelas"
@@ -422,7 +449,10 @@ export default function InputPage() {
                 errors.kelas ? "!border-red-500 focus:!ring-red-500/20" : ""
               }`}
               value={kelas}
-              onChange={(e) => handleKelasChange(e.target.value)}
+              onChange={(e) => {
+                setKelas(e.target.value);
+                if (errors.kelas) setErrors((prev) => ({ ...prev, kelas: "" }));
+              }}
             >
               <option value="">-- Pilih Kelas --</option>
               {availableClasses.map((k) => (
@@ -529,7 +559,7 @@ export default function InputPage() {
                   value={statusAbsen}
                   onChange={(e) => handleStatusChange(e.target.value as StatusAbsen)}
                 >
-                  {STATUS_ABSEN_OPTIONS.map((s) => (
+                  {(["Hadir", "Sakit", "Izin", "Alfa"] as StatusAbsen[]).map((s) => (
                     <option key={s} value={s}>
                       {s}
                     </option>
@@ -625,7 +655,14 @@ export default function InputPage() {
         {/* ---- QUICK MODE ---- */}
         {mode === "cepat" && (
           <div className="space-y-4">
-            {!kelas ? (
+            {!gen ? (
+              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 py-10 text-center">
+                <ListChecks className="mx-auto h-8 w-8 text-slate-300" />
+                <p className="mt-2 text-sm text-slate-500">
+                  Pilih gen untuk melanjutkan.
+                </p>
+              </div>
+            ) : !kelas ? (
               <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 py-10 text-center">
                 <ListChecks className="mx-auto h-8 w-8 text-slate-300" />
                 <p className="mt-2 text-sm text-slate-500">
@@ -662,13 +699,13 @@ export default function InputPage() {
                       onClick={() => toggleAllQuick(true)}
                       className="btn px-2 py-1 text-[11px] text-slate-600"
                     >
-                      <Check className="h-3 w-3" /> Semua
+                      Centang Semua
                     </button>
                     <button
                       onClick={() => toggleAllQuick(false)}
                       className="btn px-2 py-1 text-[11px] text-slate-600"
                     >
-                      <X className="h-3 w-3" /> Batal
+                      Batal
                     </button>
                   </div>
                 </div>

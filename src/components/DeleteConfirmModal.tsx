@@ -1,9 +1,9 @@
 "use client";
 
 import { Loader2, AlertTriangle } from "lucide-react";
-import type { AttendanceRecord, AngkatanType } from "@/types/attendance";
+import type { AttendanceRecord, Gen } from "@/types/attendance";
 
-type TaggedRecord = AttendanceRecord & { _angkatan: AngkatanType };
+type TaggedRecord = AttendanceRecord & { _gen: Gen };
 
 interface DeleteConfirmModalProps {
   record: TaggedRecord;
@@ -33,7 +33,7 @@ export default function DeleteConfirmModal({
         <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs">
           <p className="font-medium uppercase text-slate-900">{record.nama}</p>
           <p className="mt-1 text-slate-500">
-            Angkatan {record._angkatan} • {record.kelas} • {record.tanggal} • {record.statusAbsen}
+            Gen {record._gen} • {record.kelas} • {record.tanggal} • {record.statusAbsen}
           </p>
         </div>
         <div className="mt-5 flex items-center justify-end gap-2">

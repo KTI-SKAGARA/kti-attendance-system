@@ -1,7 +1,8 @@
 "use server";
 
 import {
-  type AngkatanType,
+  type Gen,
+  type GenConfig,
   type AttendanceRecord,
   type StatusAbsen,
   type FilterOptions,
@@ -15,18 +16,37 @@ import {
   appendRecord,
   appendRecords,
   deleteRecord,
+  getGenConfig,
+  ensureGenTab,
+  markGenLulus,
 } from "@/lib/google-sheets";
 import { getBulanTahunFromDate, normalizeName } from "@/lib/utils";
 
 // ---------------------------------------------------------------------------
-// Read: get all records for an angkatan
+// Read: get gen list
+// ---------------------------------------------------------------------------
+
+export async function getGenList(): Promise<ApiResponse<GenConfig[]>> {
+  try {
+    const config = await getGenConfig();
+    return { success: true, data: config };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Gagal mengambil daftar gen.",
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Read: get all records for a gen
 // ---------------------------------------------------------------------------
 
 export async function getAttendanceRecords(
-  angkatan: AngkatanType
+  gen: Gen
 ): Promise<ApiResponse<AttendanceRecord[]>> {
   try {
-    const records = await fetchRecords(angkatan);
+    const records = await fetchRecords(gen);
     return { success: true, data: records };
   } catch (error) {
     return {
@@ -41,10 +61,10 @@ export async function getAttendanceRecords(
 // ---------------------------------------------------------------------------
 
 export async function getExistingStudents(
-  angkatan: AngkatanType
+  gen: Gen
 ): Promise<ApiResponse<StudentOption[]>> {
   try {
-    const records = await fetchRecords(angkatan);
+    const records = await fetchRecords(gen);
     const studentMap = new Map<string, string>(); // nama -> kelas
 
     for (const r of records) {
@@ -75,10 +95,10 @@ export async function getExistingStudents(
 // ---------------------------------------------------------------------------
 
 export async function getFilterOptions(
-  angkatan: AngkatanType
+  gen: Gen
 ): Promise<ApiResponse<FilterOptions>> {
   try {
-    const records = await fetchRecords(angkatan);
+    const records = await fetchRecords(gen);
 
     const kelasSet = new Set<string>();
     const bulanSet = new Set<string>();
@@ -88,12 +108,10 @@ export async function getFilterOptions(
       if (r.bulanTahun) bulanSet.add(r.bulanTahun);
     }
 
-    // Sort kelas alphabetically using localeCompare
     const kelasList = Array.from(kelasSet).sort((a, b) =>
       a.localeCompare(b, "id")
     );
 
-    // Sort bulan chronologically
     const bulanList = Array.from(bulanSet).sort((a, b) => {
       const [am, ay] = a.split("-").map(Number);
       const [bm, by] = b.split("-").map(Number);
@@ -108,6 +126,33 @@ export async function getFilterOptions(
         error instanceof Error
           ? error.message
           : "Gagal mengambil opsi filter.",
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Read: get classes available for a specific gen from sheet data
+// ---------------------------------------------------------------------------
+
+export async function getGenClasses(
+  gen: Gen
+): Promise<ApiResponse<string[]>> {
+  try {
+    const records = await fetchRecords(gen);
+    const classSet = new Set<string>();
+
+    for (const r of records) {
+      if (r.kelas) classSet.add(r.kelas);
+    }
+
+    return {
+      success: true,
+      data: Array.from(classSet).sort((a, b) => a.localeCompare(b, "id")),
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Gagal mengambil data kelas.",
     };
   }
 }
@@ -150,7 +195,6 @@ export async function getDashboardStats(
         break;
     }
 
-    // Class summary aggregation
     if (r.kelas) {
       const current = classMap.get(r.kelas) || { totalKas: 0, totalRecords: 0, hadirCount: 0 };
       current.totalKas += r.nominalKas;
@@ -178,11 +222,11 @@ export async function getDashboardStats(
 }
 
 // ---------------------------------------------------------------------------
-// Write: submit a new attendance record (UPPERCASE conversion)
+// Write: submit a new attendance record
 // ---------------------------------------------------------------------------
 
 export async function submitAttendanceRecord(formData: {
-  angkatan: AngkatanType;
+  gen: Gen;
   kelas: string;
   nama: string;
   tanggal: string; // DD/MM/YYYY
@@ -192,7 +236,6 @@ export async function submitAttendanceRecord(formData: {
   try {
     const formattedNama = formData.nama ? normalizeName(formData.nama) : "";
 
-    // Validation
     if (!formattedNama) {
       return { success: false, error: "Nama siswa wajib diisi." };
     }
@@ -225,7 +268,7 @@ export async function submitAttendanceRecord(formData: {
       bulanTahun: getBulanTahunFromDate(formData.tanggal),
     };
 
-    await appendRecord(formData.angkatan, record);
+    await appendRecord(formData.gen, record);
 
     return { success: true };
   } catch (error) {
@@ -238,30 +281,11 @@ export async function submitAttendanceRecord(formData: {
 }
 
 // ---------------------------------------------------------------------------
-// Delete: delete an attendance record by index
-// ---------------------------------------------------------------------------
-
-export async function deleteAttendanceRecord(
-  angkatan: AngkatanType,
-  recordIndex: number
-): Promise<ApiResponse> {
-  try {
-    await deleteRecord(angkatan, recordIndex);
-    return { success: true };
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : "Gagal menghapus data.",
-    };
-  }
-}
-
-// ---------------------------------------------------------------------------
 // Write: bulk submit attendance records (Mode Cepat)
 // ---------------------------------------------------------------------------
 
 export async function submitBulkAttendance(
-  angkatan: AngkatanType,
+  gen: Gen,
   kelas: string,
   tanggal: string, // DD/MM/YYYY
   entries: { nama: string; statusAbsen: StatusAbsen; nominalKas: number }[]
@@ -287,13 +311,77 @@ export async function submitBulkAttendance(
       bulanTahun,
     }));
 
-    await appendRecords(angkatan, records);
+    await appendRecords(gen, records);
 
     return { success: true, data: { saved: records.length } };
   } catch (error) {
     return {
       success: false,
       error: error instanceof Error ? error.message : "Gagal menyimpan data.",
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Delete: delete an attendance record by index
+// ---------------------------------------------------------------------------
+
+export async function deleteAttendanceRecord(
+  gen: Gen,
+  recordIndex: number
+): Promise<ApiResponse> {
+  try {
+    await deleteRecord(gen, recordIndex);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Gagal menghapus data.",
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Admin: create new gen
+// ---------------------------------------------------------------------------
+
+export async function createGen(gen: string): Promise<ApiResponse> {
+  try {
+    if (!/^\d{1,2}$/.test(gen)) {
+      return { success: false, error: "Format gen tidak valid. Masukkan angka 1-99." };
+    }
+
+    const config = await getGenConfig();
+    if (config.find((c) => c.gen === gen)) {
+      return { success: false, error: `Gen ${gen} sudah ada.` };
+    }
+
+    await ensureGenTab(gen);
+
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Gagal membuat gen baru.",
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Admin: toggle gen status (lulus/aktif)
+// ---------------------------------------------------------------------------
+
+export async function toggleGenStatus(
+  gen: Gen,
+  lulus: boolean
+): Promise<ApiResponse> {
+  try {
+    await markGenLulus(gen, lulus);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Gagal mengubah status gen.",
     };
   }
 }
