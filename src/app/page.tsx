@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   type Gen,
   type FilterGen,
@@ -104,12 +104,6 @@ export default function DashboardPage() {
     type: "success" | "error";
     message: string;
   } | null>(null);
-
-  // Swipe state per row
-  const [swipedIndex, setSwipedIndex] = useState<number | null>(null);
-  const touchStartX = useRef(0);
-  const touchCurrentX = useRef(0);
-  const swipingRef = useRef(false);
 
   // Gens to iterate based on showLulus toggle
   const iterGens = useMemo(() => {
@@ -285,35 +279,6 @@ export default function DashboardPage() {
       setEditing(false);
       setTimeout(() => setToast(null), TOAST_DURATION);
     }
-  };
-
-  // Swipe handlers for touch delete
-  const handleTouchStart = (e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchCurrentX.current = e.touches[0].clientX;
-    swipingRef.current = false;
-  };
-
-  const handleTouchMove = (e: React.TouchEvent, idx: number) => {
-    const diff = touchStartX.current - e.touches[0].clientX;
-    if (Math.abs(diff) > 10) {
-      swipingRef.current = true;
-    }
-    if (diff > 0) {
-      touchCurrentX.current = e.touches[0].clientX;
-      setSwipedIndex(diff > 60 ? idx : null);
-    } else {
-      setSwipedIndex(null);
-    }
-  };
-
-  const handleTouchEnd = () => {
-    swipingRef.current = false;
-  };
-
-  const handleRowClick = () => {
-    if (swipingRef.current) return;
-    setSwipedIndex(null);
   };
 
   // Export per gen per bulan — Excel format
@@ -577,105 +542,65 @@ export default function DashboardPage() {
                       <th>Kelas</th>
                       <th>Status</th>
                       <th className="text-right">Kas</th>
-                      {filters.gen === "semua" && <th>Gen</th>}
+                      <th>Gen</th>
                       <th className="w-20"></th>
                     </tr>
                   </thead>
                   <tbody>
                     {paginatedRecords.map((r, i) => {
                       const rowIdx = (page - 1) * PAGE_SIZE + i;
-                      const isSwiped = swipedIndex === rowIdx;
                       return (
-                        <tr
-                          key={`${r._gen}-${r.tanggal}-${r.nama}-${i}`}
-                          className="swipe-row"
-                          onClick={handleRowClick}
-                          onTouchStart={handleTouchStart}
-                          onTouchMove={(e) => handleTouchMove(e, rowIdx)}
-                          onTouchEnd={handleTouchEnd}
-                        >
-                          <td
-                            colSpan={filters.gen === "semua" ? 8 : 7}
-                            style={{ padding: 0 }}
-                          >
-                            <div
-                              className={`swipe-row-inner flex items-center ${isSwiped ? "-translate-x-[80px]" : ""}`}
+                        <tr key={`${r._gen}-${r.tanggal}-${r.nama}-${i}`}>
+                          <td className="text-slate-400 tabular-nums">
+                            {(page - 1) * PAGE_SIZE + i + 1}
+                          </td>
+                          <td className="whitespace-nowrap text-slate-600 dark:text-slate-400">{r.tanggal}</td>
+                          <td className="font-medium uppercase text-slate-900 dark:text-slate-100">{r.nama}</td>
+                          <td className="text-slate-600 dark:text-slate-400">{r.kelas}</td>
+                          <td>
+                            <span
+                              className={`badge ${
+                                r.statusAbsen === "Hadir"
+                                  ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"
+                                  : r.statusAbsen === "Sakit"
+                                  ? "bg-amber-50 text-amber-700 dark:bg-amber-900 dark:text-amber-300"
+                                  : r.statusAbsen === "Izin"
+                                  ? "bg-orange-50 text-orange-700 dark:bg-orange-900 dark:text-orange-300"
+                                  : "bg-red-50 text-red-700 dark:bg-red-900 dark:text-red-300"
+                              }`}
                             >
-                              <div className="flex flex-1 items-center">
-                                <td className="w-10 text-slate-400 tabular-nums">
-                                  {(page - 1) * PAGE_SIZE + i + 1}
-                                </td>
-                                <td className="whitespace-nowrap text-slate-600 dark:text-slate-400">{r.tanggal}</td>
-                                <td className="font-medium uppercase text-slate-900 dark:text-slate-100">{r.nama}</td>
-                                <td className="text-slate-600 dark:text-slate-400">{r.kelas}</td>
-                                <td>
-                                  <span
-                                    className={`badge ${
-                                      r.statusAbsen === "Hadir"
-                                        ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300"
-                                        : r.statusAbsen === "Sakit"
-                                        ? "bg-amber-50 text-amber-700 dark:bg-amber-900 dark:text-amber-300"
-                                        : r.statusAbsen === "Izin"
-                                        ? "bg-orange-50 text-orange-700 dark:bg-orange-900 dark:text-orange-300"
-                                        : "bg-red-50 text-red-700 dark:bg-red-900 dark:text-red-300"
-                                    }`}
-                                  >
-                                    {r.statusAbsen}
-                                  </span>
-                                </td>
-                                <td className="text-right tabular-nums">
-                                  {r.nominalKas > 0 ? formatRupiah(r.nominalKas) : "—"}
-                                </td>
-                                {filters.gen === "semua" && (
-                                  <td>
-                                    <span className="badge bg-slate-50 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                                      {r._gen}
-                                    </span>
-                                  </td>
-                                )}
-                                <td className="w-20 text-right">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      openEditModal(r, rowIdx);
-                                    }}
-                                    className="btn btn-ghost min-h-[44px] min-w-[44px] p-2 text-slate-400 hover:text-blue-600"
-                                    title="Edit"
-                                  >
-                                    <Pencil className="h-4 w-4" />
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setDeleteModal({
-                                        open: true,
-                                        index: rowIdx,
-                                        record: r,
-                                      });
-                                    }}
-                                    className="btn btn-ghost min-h-[44px] min-w-[44px] p-2 text-slate-400 hover:text-red-600"
-                                    title="Hapus"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </button>
-                                </td>
-                              </div>
-                              <div className="swipe-row-actions">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setDeleteModal({
-                                      open: true,
-                                      index: rowIdx,
-                                      record: r,
-                                    });
-                                  }}
-                                  className="flex h-full items-center justify-center bg-red-500 px-5 text-white"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </div>
-                            </div>
+                              {r.statusAbsen}
+                            </span>
+                          </td>
+                          <td className="text-right tabular-nums">
+                            {r.nominalKas > 0 ? formatRupiah(r.nominalKas) : "—"}
+                          </td>
+                          <td>
+                            <span className="badge bg-slate-100 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                              {r._gen}
+                            </span>
+                          </td>
+                          <td className="text-right">
+                            <button
+                              onClick={() => openEditModal(r, rowIdx)}
+                              className="btn btn-ghost min-h-[44px] min-w-[44px] p-2 text-slate-400 hover:text-blue-600"
+                              title="Edit"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() =>
+                                setDeleteModal({
+                                  open: true,
+                                  index: rowIdx,
+                                  record: r,
+                                })
+                              }
+                              className="btn btn-ghost min-h-[44px] min-w-[44px] p-2 text-slate-400 hover:text-red-600"
+                              title="Hapus"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
                           </td>
                         </tr>
                       );
@@ -857,9 +782,21 @@ export default function DashboardPage() {
                   value={editKelas}
                   onChange={(e) => setEditKelas(e.target.value)}
                 >
-                  {SKAGARA_CLASSES.map((k) => (
-                    <option key={k} value={k}>{k}</option>
-                  ))}
+                  <optgroup label="Kelas X">
+                    {SKAGARA_CLASSES.filter((k) => k.startsWith("X ")).map((k) => (
+                      <option key={k} value={k}>{k}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Kelas XI">
+                    {SKAGARA_CLASSES.filter((k) => k.startsWith("XI ")).map((k) => (
+                      <option key={k} value={k}>{k}</option>
+                    ))}
+                  </optgroup>
+                  <optgroup label="Kelas XII">
+                    {SKAGARA_CLASSES.filter((k) => k.startsWith("XII ")).map((k) => (
+                      <option key={k} value={k}>{k}</option>
+                    ))}
+                  </optgroup>
                 </select>
               </div>
               <div>
