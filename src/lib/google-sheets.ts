@@ -1,34 +1,36 @@
 import {
-  type AngkatanType,
+  type Gen,
+  type GenConfig,
   type AttendanceRecord,
   type StatusAbsen,
-  SHEET_TAB_MAP,
+  MOCK_GENS,
+  getGenTabName,
+  CONFIG_TAB,
 } from "@/types/attendance";
 import { normalizeName } from "@/lib/utils";
 import fs from "fs";
 import path from "path";
 
 // ---------------------------------------------------------------------------
-// Store for demo/development (used when env vars are not configured)
-// Default is empty; records added via form will persist in-memory.
+// Mock store (used when Google Sheets credentials are not configured)
 // ---------------------------------------------------------------------------
+
+const MOCK_GEN_CONFIG: GenConfig[] = MOCK_GENS.map((g) => ({
+  gen: g,
+  status: "aktif" as const,
+}));
 
 const MOCK_DATA: AttendanceRecord[] = [];
 
-function getMockDataForAngkatan(angkatan: AngkatanType): AttendanceRecord[] {
-  const prefix = `${angkatan} `;
+function getMockDataForGen(gen: Gen): AttendanceRecord[] {
+  const prefix = `${gen} `;
   return MOCK_DATA.filter((r) => r.kelas.startsWith(prefix));
 }
 
-// In-memory store so appends persist during the dev session
-const mockAppended: Record<string, AttendanceRecord[]> = {
-  "10": [],
-  "11": [],
-  "12": [],
-};
+const mockAppended: Record<string, AttendanceRecord[]> = {};
 
 // ---------------------------------------------------------------------------
-// Google Sheets credentials loader (supports service-account.json & .env.local)
+// Google Sheets credentials loader
 // ---------------------------------------------------------------------------
 
 function getFormattedPrivateKey(): string {
@@ -44,7 +46,6 @@ function getFormattedPrivateKey(): string {
 }
 
 function getServiceAccountCredentials(): { email: string; key: string } {
-  // Option A: Read directly from service-account.json in project root
   const jsonPath = path.join(process.cwd(), "service-account.json");
   if (fs.existsSync(jsonPath)) {
     try {
@@ -61,14 +62,13 @@ function getServiceAccountCredentials(): { email: string; key: string } {
     }
   }
 
-  // Option B: Fallback to environment variables (.env.local)
   return {
     email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL || "",
     key: getFormattedPrivateKey(),
   };
 }
 
-function isGoogleSheetsConfigured(): boolean {
+export function isGoogleSheetsConfigured(): boolean {
   const creds = getServiceAccountCredentials();
   return !!(
     creds.email &&
@@ -77,12 +77,15 @@ function isGoogleSheetsConfigured(): boolean {
   );
 }
 
-async function getSheet(tabName: string) {
+// ---------------------------------------------------------------------------
+// Google Spreadsheet connection
+// ---------------------------------------------------------------------------
+
+async function getDoc() {
   const { GoogleSpreadsheet } = await import("google-spreadsheet");
   const { JWT } = await import("google-auth-library");
 
   const creds = getServiceAccountCredentials();
-
   const serviceAccountAuth = new JWT({
     email: creds.email,
     key: creds.key,
@@ -94,8 +97,12 @@ async function getSheet(tabName: string) {
     serviceAccountAuth
   );
   await doc.loadInfo();
+  return doc;
+}
 
-  // Try exact tab name first (e.g. "GEN 10"), then alternatives
+async function getSheet(tabName: string) {
+  const doc = await getDoc();
+
   let sheet = doc.sheetsByTitle[tabName];
   if (!sheet) {
     const num = tabName.replace(/\D/g, "");
@@ -109,114 +116,182 @@ async function getSheet(tabName: string) {
   }
 
   if (!sheet) {
-    const idx = tabName.includes("10") ? 0 : tabName.includes("11") ? 1 : 2;
-    if (doc.sheetsByIndex[idx]) {
-      sheet = doc.sheetsByIndex[idx];
-    }
+    // Fallback: pick first sheet
+    sheet = doc.sheetsByIndex[0];
   }
 
   if (!sheet) {
-    throw new Error(`Tab sheet untuk "${tabName}" tidak ditemukan di Google Spreadsheet Anda.`);
+    throw new Error(`Tab sheet "${tabName}" tidak ditemukan.`);
   }
 
   return sheet;
 }
 
 // ---------------------------------------------------------------------------
-// Automatic Google Sheet Setup & Professional Formatting
+// Gen config management (CONFIG tab)
 // ---------------------------------------------------------------------------
 
-export async function autoSetupGoogleSheet(): Promise<{ success: boolean; message: string }> {
+const HEADERS = ["Tanggal", "Nama", "Kelas", "Status_Absen", "Nominal_Kas", "Bulan_Tahun"];
+const CONFIG_HEADERS = ["Gen", "Status"];
+
+export async function getGenConfig(): Promise<GenConfig[]> {
   if (!isGoogleSheetsConfigured()) {
-    return {
-      success: false,
-      message: "GOOGLE_SPREADSHEET_ID atau Kunci Service Account belum diisi.",
-    };
+    return [...MOCK_GEN_CONFIG];
   }
 
   try {
-    const { GoogleSpreadsheet } = await import("google-spreadsheet");
-    const { JWT } = await import("google-auth-library");
+    const doc = await getDoc();
+    const configSheet = doc.sheetsByTitle[CONFIG_TAB];
 
-    const creds = getServiceAccountCredentials();
-
-    const serviceAccountAuth = new JWT({
-      email: creds.email,
-      key: creds.key,
-      scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-    });
-
-    const doc = new GoogleSpreadsheet(
-      process.env.GOOGLE_SPREADSHEET_ID!,
-      serviceAccountAuth
-    );
-    await doc.loadInfo();
-
-    const requiredTabs = ["GEN 10", "GEN 11", "GEN 12"];
-    const headers = ["Tanggal", "Nama", "Kelas", "Status_Absen", "Nominal_Kas", "Bulan_Tahun"];
-
-    for (const tabName of requiredTabs) {
-      let sheet = doc.sheetsByTitle[tabName];
-      if (!sheet) {
-        sheet = await doc.addSheet({ title: tabName, headerValues: headers });
-      } else {
-        await sheet.setHeaderRow(headers);
-      }
-
-      // Format Header Row A1:F1 (Dark Navy #1E293B, Bold White Text)
-      try {
-        await sheet.loadCells("A1:F1");
-        for (let col = 0; col < headers.length; col++) {
-          const cell = sheet.getCell(0, col);
-          cell.backgroundColor = { red: 0.118, green: 0.161, blue: 0.231, alpha: 1 };
-          cell.textFormat = {
-            bold: true,
-            foregroundColor: { red: 1, green: 1, blue: 1, alpha: 1 },
-            fontSize: 10,
-          };
+    if (!configSheet) {
+      // No CONFIG tab yet — derive from existing GEN tabs
+      const gens: GenConfig[] = [];
+      for (const [title] of Object.entries(doc.sheetsByTitle)) {
+        const match = title.match(/^GEN\s+(\d+)$/i);
+        if (match) {
+          gens.push({ gen: match[1], status: "aktif" });
         }
-        await sheet.saveUpdatedCells();
+      }
+      return gens.sort((a, b) => Number(a.gen) - Number(b.gen));
+    }
 
-        // Freeze top header row
-        await sheet.updateProperties({
-          gridProperties: {
-            rowCount: sheet.rowCount || 100,
-            columnCount: sheet.columnCount || 20,
-            frozenRowCount: 1,
-          },
-        });
-      } catch (formatErr) {
-        console.warn("Could not apply cell style:", formatErr);
+    const rows = await configSheet.getRows();
+    const config: GenConfig[] = rows
+      .map((row) => ({
+        gen: row.get("Gen") ?? "",
+        status: (row.get("Status") ?? "aktif") as GenConfig["status"],
+      }))
+      .filter((c) => c.gen);
+
+    // Also add any GEN tabs not in CONFIG (fallback)
+    const configGens = new Set(config.map((c) => c.gen));
+    for (const [title] of Object.entries(doc.sheetsByTitle)) {
+      const match = title.match(/^GEN\s+(\d+)$/i);
+      if (match && !configGens.has(match[1])) {
+        config.push({ gen: match[1], status: "aktif" });
       }
     }
 
-    return {
-      success: true,
-      message: "⚡ Google Sheet berhasil di-format profesional! Warna header (Dark Navy), teks putih tebal, & freeze baris 1 telah diterapkan.",
-    };
-  } catch (error) {
-    return {
-      success: false,
-      message: error instanceof Error ? error.message : "Gagal setup Google Sheet.",
-    };
+    return config.sort((a, b) => Number(a.gen) - Number(b.gen));
+  } catch {
+    return [...MOCK_GEN_CONFIG];
+  }
+}
+
+export async function getActiveGens(): Promise<Gen[]> {
+  const config = await getGenConfig();
+  return config.filter((c) => c.status === "aktif").map((c) => c.gen);
+}
+
+export async function ensureGenTab(gen: Gen): Promise<{ created: boolean }> {
+  const tabName = getGenTabName(gen);
+
+  if (!isGoogleSheetsConfigured()) {
+    if (!MOCK_GEN_CONFIG.find((c) => c.gen === gen)) {
+      MOCK_GEN_CONFIG.push({ gen, status: "aktif" });
+    }
+    return { created: false };
+  }
+
+  const doc = await getDoc();
+  let configSheet = doc.sheetsByTitle[CONFIG_TAB];
+  let genSheet = doc.sheetsByTitle[tabName];
+
+  // Create GEN tab if missing
+  let created = false;
+  if (!genSheet) {
+    genSheet = await doc.addSheet({ title: tabName, headerValues: HEADERS });
+    created = true;
+
+    // Format header
+    try {
+      await genSheet.loadCells("A1:F1");
+      for (let col = 0; col < HEADERS.length; col++) {
+        const cell = genSheet.getCell(0, col);
+        cell.backgroundColor = { red: 0.118, green: 0.161, blue: 0.231, alpha: 1 };
+        cell.textFormat = {
+          bold: true,
+          foregroundColor: { red: 1, green: 1, blue: 1, alpha: 1 },
+          fontSize: 10,
+        };
+      }
+      await genSheet.saveUpdatedCells();
+
+      await genSheet.updateProperties({
+        gridProperties: {
+          rowCount: genSheet.rowCount || 100,
+          columnCount: genSheet.columnCount || 20,
+          frozenRowCount: 1,
+        },
+      });
+    } catch (e) {
+      console.warn("Could not format GEN tab:", e);
+    }
+  }
+
+  // Ensure CONFIG tab exists
+  if (!configSheet) {
+    configSheet = await doc.addSheet({
+      title: CONFIG_TAB,
+      headerValues: CONFIG_HEADERS,
+    });
+  }
+
+  // Upsert CONFIG row
+  const configRows = await configSheet.getRows();
+  const existing = configRows.find((r) => r.get("Gen") === gen);
+  if (existing) {
+    existing.set("Status", "aktif");
+    await existing.save();
+  } else {
+    await configSheet.addRow({ Gen: gen, Status: "aktif" });
+  }
+
+  return { created };
+}
+
+export async function markGenLulus(gen: Gen, lulus: boolean): Promise<void> {
+  const status = lulus ? "lulus" : "aktif";
+
+  if (!isGoogleSheetsConfigured()) {
+    const entry = MOCK_GEN_CONFIG.find((c) => c.gen === gen);
+    if (entry) entry.status = status;
+    return;
+  }
+
+  const doc = await getDoc();
+  let configSheet = doc.sheetsByTitle[CONFIG_TAB];
+
+  if (!configSheet) {
+    configSheet = await doc.addSheet({
+      title: CONFIG_TAB,
+      headerValues: CONFIG_HEADERS,
+    });
+  }
+
+  const rows = await configSheet.getRows();
+  const existing = rows.find((r) => r.get("Gen") === gen);
+  if (existing) {
+    existing.set("Status", status);
+    await existing.save();
+  } else {
+    await configSheet.addRow({ Gen: gen, Status: status });
   }
 }
 
 // ---------------------------------------------------------------------------
-// Public API (used by Server Actions)
+// Records CRUD
 // ---------------------------------------------------------------------------
 
-export async function fetchRecords(
-  angkatan: AngkatanType
-): Promise<AttendanceRecord[]> {
+export async function fetchRecords(gen: Gen): Promise<AttendanceRecord[]> {
   if (!isGoogleSheetsConfigured()) {
     return [
-      ...getMockDataForAngkatan(angkatan),
-      ...(mockAppended[angkatan] || []),
+      ...getMockDataForGen(gen),
+      ...(mockAppended[gen] || []),
     ];
   }
 
-  const tabName = SHEET_TAB_MAP[angkatan] || `GEN ${angkatan}`;
+  const tabName = getGenTabName(gen);
   const sheet = await getSheet(tabName);
   const rows = await sheet.getRows();
 
@@ -231,7 +306,7 @@ export async function fetchRecords(
 }
 
 export async function appendRecord(
-  angkatan: AngkatanType,
+  gen: Gen,
   record: AttendanceRecord
 ): Promise<void> {
   const formattedRecord: AttendanceRecord = {
@@ -240,12 +315,12 @@ export async function appendRecord(
   };
 
   if (!isGoogleSheetsConfigured()) {
-    if (!mockAppended[angkatan]) mockAppended[angkatan] = [];
-    mockAppended[angkatan].push(formattedRecord);
+    if (!mockAppended[gen]) mockAppended[gen] = [];
+    mockAppended[gen].push(formattedRecord);
     return;
   }
 
-  const tabName = SHEET_TAB_MAP[angkatan] || `GEN ${angkatan}`;
+  const tabName = getGenTabName(gen);
   const sheet = await getSheet(tabName);
 
   await sheet.addRow({
@@ -259,7 +334,7 @@ export async function appendRecord(
 }
 
 export async function appendRecords(
-  angkatan: AngkatanType,
+  gen: Gen,
   records: AttendanceRecord[]
 ): Promise<void> {
   const formatted = records.map((r) => ({
@@ -268,12 +343,12 @@ export async function appendRecords(
   }));
 
   if (!isGoogleSheetsConfigured()) {
-    if (!mockAppended[angkatan]) mockAppended[angkatan] = [];
-    mockAppended[angkatan].push(...formatted);
+    if (!mockAppended[gen]) mockAppended[gen] = [];
+    mockAppended[gen].push(...formatted);
     return;
   }
 
-  const tabName = SHEET_TAB_MAP[angkatan] || `GEN ${angkatan}`;
+  const tabName = getGenTabName(gen);
   const sheet = await getSheet(tabName);
 
   const rows = formatted.map((r) => ({
@@ -289,21 +364,21 @@ export async function appendRecords(
 }
 
 export async function deleteRecord(
-  angkatan: AngkatanType,
+  gen: Gen,
   recordIndex: number
 ): Promise<void> {
   if (!isGoogleSheetsConfigured()) {
-    const mockList = getMockDataForAngkatan(angkatan);
+    const mockList = getMockDataForGen(gen);
     const mockLen = mockList.length;
     if (recordIndex < mockLen) return;
     const appendedIdx = recordIndex - mockLen;
-    if (mockAppended[angkatan] && appendedIdx >= 0 && appendedIdx < mockAppended[angkatan].length) {
-      mockAppended[angkatan].splice(appendedIdx, 1);
+    if (mockAppended[gen] && appendedIdx >= 0 && appendedIdx < mockAppended[gen].length) {
+      mockAppended[gen].splice(appendedIdx, 1);
     }
     return;
   }
 
-  const tabName = SHEET_TAB_MAP[angkatan] || `GEN ${angkatan}`;
+  const tabName = getGenTabName(gen);
   const sheet = await getSheet(tabName);
   const rows = await sheet.getRows();
 
@@ -311,5 +386,3 @@ export async function deleteRecord(
     await rows[recordIndex].delete();
   }
 }
-
-export { isGoogleSheetsConfigured };

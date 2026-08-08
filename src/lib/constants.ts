@@ -3,7 +3,7 @@ export const SCHOOL_NAME = "SMK Negeri 3 Jepara";
 export const APP_SUBTITLE = `${APP_NAME} — ${SCHOOL_NAME}`;
 
 export const COOKIE_NAME = "admin_session";
-export const SESSION_SECRET = "kti_skagara_secure_session_token_2026";
+export const SESSION_SECRET = process.env.SESSION_SECRET || "kti_skagara_secure_session_token_2026";
 
 export const DEFAULT_ADMIN_PASSWORD = "ktiskagara2026";
 

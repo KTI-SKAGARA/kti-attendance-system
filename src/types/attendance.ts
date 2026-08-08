@@ -1,14 +1,18 @@
 // TypeScript types for KTI SKAGARA Attendance & Cash Management
 
-export type AngkatanType = "10" | "11" | "12";
+// ---- Gen (generation = intake batch) ----
 
-export type FilterAngkatan = AngkatanType | "semua";
+export type Gen = string; // e.g. "10", "11", "12", "13", ...
+export type FilterGen = Gen | "semua";
+
+export interface GenConfig {
+  gen: Gen;
+  status: "aktif" | "lulus";
+}
+
+// ---- Attendance ----
 
 export type StatusAbsen = "Hadir" | "Sakit" | "Izin" | "Alfa";
-
-export const ANGKATAN_OPTIONS: AngkatanType[] = ["10", "11", "12"];
-
-export const FILTER_ANGKATAN_OPTIONS: FilterAngkatan[] = ["semua", "10", "11", "12"];
 
 export const STATUS_ABSEN_OPTIONS: StatusAbsen[] = [
   "Hadir",
@@ -17,36 +21,73 @@ export const STATUS_ABSEN_OPTIONS: StatusAbsen[] = [
   "Alfa",
 ];
 
-// Official Classes at SMK Negeri 3 Jepara (SKAGARA)
+// ---- Classes (with Roman numeral prefixes, 39 official SKAGARA classes) ----
+
 export const SKAGARA_CLASSES = [
-  "AKL 1",
-  "AKL 2",
-  "AKL 3",
-  "AKL 4",
-  "MP 1",
-  "MP 2",
-  "DKV 1",
-  "DKV 2",
-  "TKJ 1",
-  "TKJ 2",
-  "PSPT",
-  "PM 1",
-  "PM 2",
+  // Kelas X (Angkatan 10)
+  "X AKL 1",
+  "X AKL 2",
+  "X AKL 3",
+  "X AKL 4",
+  "X MPLB 1",
+  "X MPLB 2",
+  "X PM 1",
+  "X PM 2",
+  "X DKV 1",
+  "X DKV 2",
+  "X TJKT 1",
+  "X TJKT 2",
+  "X BROADFIL",
+  // Kelas XI (Angkatan 11)
+  "XI AK 1",
+  "XI AK 2",
+  "XI AK 3",
+  "XI AK 4",
+  "XI MP 1",
+  "XI MP 2",
+  "XI PM 1",
+  "XI PM 2",
+  "XI DKV 1",
+  "XI DKV 2",
+  "XI TKJ 1",
+  "XI TKJ 2",
+  "XI PSPT",
+  // Kelas XII (Angkatan 12)
+  "XII AK 1",
+  "XII AK 2",
+  "XII AK 3",
+  "XII AK 4",
+  "XII MP 1",
+  "XII MP 2",
+  "XII PM 1",
+  "XII PM 2",
+  "XII DKV 1",
+  "XII DKV 2",
+  "XII TKJ 1",
+  "XII TKJ 2",
+  "XII PSPT",
 ] as const;
 
-// Nominal kas rutin default per pertemuan (Rp)
+// ---- Constants ----
+
 export const KAS_RUTIN_DEFAULT = 2000;
 
-export const SHEET_TAB_MAP: Record<AngkatanType, string> = {
-  "10": "GEN 10",
-  "11": "GEN 11",
-  "12": "GEN 12",
-};
+export const MOCK_GENS: Gen[] = ["10", "11", "12"];
+
+// ---- Sheet helpers ----
+
+export const CONFIG_TAB = "CONFIG";
+
+export function getGenTabName(gen: Gen): string {
+  return `GEN ${gen}`;
+}
+
+// ---- Interfaces ----
 
 export interface AttendanceRecord {
   tanggal: string; // DD/MM/YYYY
   nama: string;
-  kelas: string; // e.g. "TKJ 1"
+  kelas: string; // e.g. "X AKL 1", "XI TKJ 2"
   statusAbsen: StatusAbsen;
   nominalKas: number;
   bulanTahun: string; // MM-YYYY
@@ -58,7 +99,7 @@ export interface StudentOption {
 }
 
 export interface FilterState {
-  angkatan: FilterAngkatan;
+  gen: FilterGen;
   kelas: string; // "" means all
   bulan: string; // "" means all (format: MM-YYYY)
   status: StatusAbsen | ""; // "" means all

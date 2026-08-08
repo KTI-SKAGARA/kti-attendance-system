@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { logoutAdmin, checkAuth } from "@/app/actions/auth";
 import { APP_NAME, SCHOOL_NAME } from "@/lib/constants";
-import { LogOut, PlusCircle, LayoutDashboard } from "lucide-react";
+import { LogOut, PlusCircle, LayoutDashboard, Settings } from "lucide-react";
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -61,6 +61,19 @@ export default function Navbar() {
               <PlusCircle className="h-3.5 w-3.5" />
               Input Data
             </Link>
+            {isAuthenticated && (
+              <Link
+                href="/admin"
+                className={`btn px-3 py-1.5 text-xs ${
+                  pathname === "/admin"
+                    ? "bg-slate-100 text-slate-900"
+                    : "btn-ghost text-slate-600"
+                }`}
+              >
+                <Settings className="h-3.5 w-3.5" />
+                Admin
+              </Link>
+            )}
             {isAuthenticated && (
               <button
                 onClick={handleLogout}
