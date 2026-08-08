@@ -16,6 +16,7 @@ import {
   appendRecord,
   appendRecords,
   deleteRecord,
+  updateRecord,
   getGenConfig,
   ensureGenTab,
   markGenLulus,
@@ -337,6 +338,31 @@ export async function deleteAttendanceRecord(
     return {
       success: false,
       error: error instanceof Error ? error.message : "Gagal menghapus data.",
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Update: update an attendance record by index
+// ---------------------------------------------------------------------------
+
+export async function updateAttendanceRecord(
+  gen: Gen,
+  recordIndex: number,
+  data: {
+    nama?: string;
+    kelas?: string;
+    statusAbsen?: StatusAbsen;
+    nominalKas?: number;
+  }
+): Promise<ApiResponse> {
+  try {
+    await updateRecord(gen, recordIndex, data);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Gagal mengupdate data.",
     };
   }
 }

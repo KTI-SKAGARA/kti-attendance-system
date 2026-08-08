@@ -386,3 +386,44 @@ export async function deleteRecord(
     await rows[recordIndex].delete();
   }
 }
+
+export async function updateRecord(
+  gen: Gen,
+  recordIndex: number,
+  data: Partial<AttendanceRecord>
+): Promise<void> {
+  if (!isGoogleSheetsConfigured()) {
+    const mockList = getMockDataForGen(gen);
+    const mockLen = mockList.length;
+    if (recordIndex < mockLen) {
+      const record = mockList[recordIndex];
+      if (data.nama !== undefined) record.nama = data.nama;
+      if (data.kelas !== undefined) record.kelas = data.kelas;
+      if (data.statusAbsen !== undefined) record.statusAbsen = data.statusAbsen;
+      if (data.nominalKas !== undefined) record.nominalKas = data.nominalKas;
+      return;
+    }
+    const appendedIdx = recordIndex - mockLen;
+    if (mockAppended[gen] && appendedIdx >= 0 && appendedIdx < mockAppended[gen].length) {
+      const record = mockAppended[gen][appendedIdx];
+      if (data.nama !== undefined) record.nama = data.nama;
+      if (data.kelas !== undefined) record.kelas = data.kelas;
+      if (data.statusAbsen !== undefined) record.statusAbsen = data.statusAbsen;
+      if (data.nominalKas !== undefined) record.nominalKas = data.nominalKas;
+    }
+    return;
+  }
+
+  const tabName = getGenTabName(gen);
+  const sheet = await getSheet(tabName);
+  const rows = await sheet.getRows();
+
+  if (recordIndex >= 0 && recordIndex < rows.length) {
+    const row = rows[recordIndex];
+    if (data.nama !== undefined) row.set("Nama", normalizeName(data.nama));
+    if (data.kelas !== undefined) row.set("Kelas", data.kelas);
+    if (data.statusAbsen !== undefined) row.set("Status_Absen", data.statusAbsen);
+    if (data.nominalKas !== undefined) row.set("Nominal_Kas", String(data.nominalKas));
+    await row.save();
+  }
+}
