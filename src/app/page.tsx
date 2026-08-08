@@ -220,11 +220,23 @@ export default function DashboardPage() {
       const q = filters.search.toLowerCase();
       result = result.filter((r) => r.nama.toLowerCase().includes(q));
     }
-    // Sort by name, then kelas
+
+    // Count members per kelas for sort weight
+    const kelasCount = new Map<string, number>();
+    for (const r of result) {
+      kelasCount.set(r.kelas, (kelasCount.get(r.kelas) || 0) + 1);
+    }
+
+    // Sort: gen asc → kelas (most members first) → nama asc
     return result.sort((a, b) => {
-      const nameCmp = a.nama.localeCompare(b.nama, "id");
-      if (nameCmp !== 0) return nameCmp;
-      return a.kelas.localeCompare(b.kelas, "id");
+      const genCmp = Number(a._gen) - Number(b._gen);
+      if (genCmp !== 0) return genCmp;
+
+      const aCount = kelasCount.get(a.kelas) || 0;
+      const bCount = kelasCount.get(b.kelas) || 0;
+      if (aCount !== bCount) return bCount - aCount;
+
+      return a.nama.localeCompare(b.nama, "id");
     });
   }, [allRecords, filters.kelas, filters.bulan, filters.status, filters.search]);
 
@@ -560,7 +572,7 @@ export default function DashboardPage() {
                       <th>Status</th>
                       <th className="text-right">Kas</th>
                       <th>Gen</th>
-                      <th className="w-20"></th>
+                      <th className="w-24"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -597,7 +609,7 @@ export default function DashboardPage() {
                               {r._gen}
                             </span>
                           </td>
-                          <td className="text-right">
+                          <td className="whitespace-nowrap text-right">
                             <div className="inline-flex items-center gap-0.5">
                               <button
                                 onClick={() => openEditModal(r, rowIdx)}
