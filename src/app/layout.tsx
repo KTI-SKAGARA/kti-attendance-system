@@ -1,12 +1,22 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import Navbar from "@/components/Navbar";
 import ThemeProvider from "@/components/ThemeProvider";
+import SWRegister from "@/components/SWRegister";
 
 export const metadata: Metadata = {
   title: "KTI SKAGARA — Absensi & Kas (SMK Negeri 3 Jepara)",
   description:
     "Sistem Manajemen Absensi dan Kas Rutin Organisasi KTI SMK Negeri 3 Jepara (SKAGARA). Terhubung dengan Google Sheets.",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "KTI SKAGARA",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#ff548f",
 };
 
 export default function RootLayout({
@@ -30,6 +40,7 @@ export default function RootLayout({
       </head>
       <body className="noise min-h-screen antialiased">
         <ThemeProvider>
+          <SWRegister />
           <div className="dot-grid pointer-events-none fixed inset-0 -z-10 opacity-40" />
           <div className="grid-bg pointer-events-none fixed inset-0 -z-10" />
           <Navbar />

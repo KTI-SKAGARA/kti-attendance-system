@@ -16,6 +16,7 @@ import {
   appendRecord,
   appendRecords,
   deleteRecord,
+  deleteRecordsBatch,
   updateRecord,
   getGenConfig,
   ensureGenTab,
@@ -333,6 +334,25 @@ export async function deleteAttendanceRecord(
 ): Promise<ApiResponse> {
   try {
     await deleteRecord(gen, recordIndex);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Gagal menghapus data.",
+    };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Delete: batch delete attendance records by indexes
+// ---------------------------------------------------------------------------
+
+export async function deleteBatchAttendanceRecords(
+  gen: Gen,
+  recordIndexes: number[]
+): Promise<ApiResponse> {
+  try {
+    await deleteRecordsBatch(gen, recordIndexes);
     return { success: true };
   } catch (error) {
     return {
