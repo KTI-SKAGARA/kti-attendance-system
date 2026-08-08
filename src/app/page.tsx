@@ -135,6 +135,9 @@ export default function DashboardPage() {
   // Load filter options
   const loadFilterOptions = useCallback(async (genFilter: FilterGen) => {
     try {
+      let bulanList: string[] = [];
+      let kelasList: string[] = [];
+
       if (genFilter === "semua") {
         const results = await Promise.all(
           iterGens.map((g) => getFilterOptions(g))
@@ -147,22 +150,31 @@ export default function DashboardPage() {
             res.data.bulanList.forEach((b) => bulanSet.add(b));
           }
         }
-        setFilterOptions({
-          kelasList: Array.from(kelasSet).sort((a, b) => a.localeCompare(b, "id")),
-          bulanList: Array.from(bulanSet).sort((a, b) => {
-            const [am, ay] = a.split("-").map(Number);
-            const [bm, by] = b.split("-").map(Number);
-            return ay !== by ? ay - by : am - bm;
-          }),
+        kelasList = Array.from(kelasSet).sort((a, b) => a.localeCompare(b, "id"));
+        bulanList = Array.from(bulanSet).sort((a, b) => {
+          const [am, ay] = a.split("-").map(Number);
+          const [bm, by] = b.split("-").map(Number);
+          return ay !== by ? ay - by : am - bm;
         });
       } else {
         const res = await getFilterOptions(genFilter);
-        if (res.success && res.data) setFilterOptions(res.data);
+        if (res.success && res.data) {
+          kelasList = res.data.kelasList;
+          bulanList = res.data.bulanList;
+        }
+      }
+
+      setFilterOptions({ kelasList, bulanList });
+
+      // Default to latest bulan if none selected
+      if (bulanList.length > 0 && !filters.bulan) {
+        const latest = bulanList[bulanList.length - 1];
+        setFilters((f) => ({ ...f, bulan: latest }));
       }
     } catch {
       setFilterOptions({ kelasList: [], bulanList: [] });
     }
-  }, [iterGens]);
+  }, [iterGens, filters.bulan]);
 
   // Load records
   const loadRecords = useCallback(async () => {
@@ -198,7 +210,7 @@ export default function DashboardPage() {
     }
   }, [filters.gen, iterGens]);
 
-  // Client-side filtering
+  // Client-side filtering + sorting
   const records = useMemo(() => {
     let result = allRecords;
     if (filters.kelas) result = result.filter((r) => r.kelas === filters.kelas);
@@ -208,7 +220,12 @@ export default function DashboardPage() {
       const q = filters.search.toLowerCase();
       result = result.filter((r) => r.nama.toLowerCase().includes(q));
     }
-    return result;
+    // Sort by name, then kelas
+    return result.sort((a, b) => {
+      const nameCmp = a.nama.localeCompare(b.nama, "id");
+      if (nameCmp !== 0) return nameCmp;
+      return a.kelas.localeCompare(b.kelas, "id");
+    });
   }, [allRecords, filters.kelas, filters.bulan, filters.status, filters.search]);
 
   // Reset page on filter change
