@@ -35,13 +35,13 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-[70vh] items-center justify-center py-12 px-4">
+    <div className="flex min-h-dvh items-center justify-center py-12 px-4">
       <div className="w-full max-w-sm animate-page">
         <div className="mb-6 text-center">
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900">
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
             Login Admin KTI SKAGARA
           </h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             Absensi &amp; Kas Rutin — SMK Negeri 3 Jepara
           </p>
         </div>
@@ -70,7 +70,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
                 aria-label="Tampilkan password"
               >
                 {showPassword ? (
@@ -81,7 +81,7 @@ export default function LoginPage() {
               </button>
             </div>
             {error && (
-              <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-red-600">
+              <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-red-600 dark:text-red-400">
                 <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                 {error}
               </p>
@@ -91,7 +91,7 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={submitting}
-            className="btn btn-primary w-full py-2.5 text-sm font-semibold"
+            className="btn btn-primary w-full min-h-[48px] py-3 text-sm font-semibold"
           >
             {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
             {submitting ? "Memverifikasi..." : "Masuk"}

@@ -89,16 +89,16 @@ export default function AdminPage() {
   return (
     <div className="mx-auto max-w-2xl animate-page">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-200 pb-5">
+      <div className="flex items-center justify-between border-b border-slate-200 pb-5 dark:border-slate-800">
         <div className="flex items-center gap-3">
-          <Link href="/" className="btn btn-secondary p-2" aria-label="Kembali ke dashboard">
-            <ArrowLeft className="h-4 w-4 text-slate-600" />
+          <Link href="/" className="btn btn-secondary min-h-[44px] min-w-[44px] p-2" aria-label="Kembali ke dashboard">
+            <ArrowLeft className="h-4 w-4 text-slate-600 dark:text-slate-400" />
           </Link>
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-slate-900">
+            <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
               Admin Panel
             </h1>
-            <p className="mt-0.5 text-sm text-slate-500">
+            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
               {APP_NAME} — Kelola Gen
             </p>
           </div>
@@ -107,8 +107,8 @@ export default function AdminPage() {
 
       {/* Tambah Gen */}
       <div className="card mt-5 p-6 sm:p-8">
-        <h2 className="text-sm font-semibold text-slate-900">Tambah Gen Baru</h2>
-        <p className="mt-1 text-xs text-slate-500">
+        <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Tambah Gen Baru</h2>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
           Masukkan nomor gen (misal: 13). Tab sheet &quot;GEN 13&quot; akan dibuat otomatis.
         </p>
         <div className="mt-4 flex items-end gap-3">
@@ -132,7 +132,7 @@ export default function AdminPage() {
           <button
             onClick={handleCreate}
             disabled={submitting || !newGen.trim()}
-            className="btn btn-primary px-4 py-2.5 text-sm"
+            className="btn btn-primary min-h-[48px] px-4 py-3 text-sm"
           >
             {submitting ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -146,8 +146,8 @@ export default function AdminPage() {
 
       {/* Daftar Gen */}
       <div className="card mt-4 p-6 sm:p-8">
-        <h2 className="text-sm font-semibold text-slate-900">Daftar Gen</h2>
-        <p className="mt-1 text-xs text-slate-500">
+        <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Daftar Gen</h2>
+        <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
           Gen aktif tampil di filter &quot;Semua Gen&quot;. Gen lulus tersembunyi dari filter utama tapi data tetap tersimpan.
         </p>
 
@@ -170,31 +170,31 @@ export default function AdminPage() {
               <tbody>
                 {gens.map((g) => (
                   <tr key={g.gen}>
-                    <td className="font-medium text-slate-900">Gen {g.gen}</td>
+                    <td className="font-medium text-slate-900 dark:text-slate-100">Gen {g.gen}</td>
                     <td>
                       {g.status === "aktif" ? (
-                        <span className="badge bg-emerald-50 text-emerald-700">Aktif</span>
+                        <span className="badge bg-emerald-50 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300">Aktif</span>
                       ) : (
-                        <span className="badge bg-amber-50 text-amber-700">Lulus</span>
+                        <span className="badge bg-amber-50 text-amber-700 dark:bg-amber-900 dark:text-amber-300">Lulus</span>
                       )}
                     </td>
                     <td className="text-right">
                       <button
                         onClick={() => handleToggleLulus(g.gen, g.status)}
                         disabled={submitting}
-                        className={`btn px-2.5 py-1 text-xs ${
+                        className={`btn min-h-[44px] px-3 py-2 text-sm ${
                           g.status === "aktif"
-                            ? "btn-ghost text-amber-600 hover:text-amber-700"
-                            : "btn-ghost text-emerald-600 hover:text-emerald-700"
+                            ? "btn-ghost text-amber-600 hover:text-amber-700 dark:text-amber-400"
+                            : "btn-ghost text-emerald-600 hover:text-emerald-700 dark:text-emerald-400"
                         }`}
                       >
                         {g.status === "aktif" ? (
                           <>
-                            <GraduationCap className="h-3 w-3" /> Tandai Lulus
+                            <GraduationCap className="h-4 w-4" /> Tandai Lulus
                           </>
                         ) : (
                           <>
-                            <RotateCcw className="h-3 w-3" /> Aktifkan
+                            <RotateCcw className="h-4 w-4" /> Aktifkan
                           </>
                         )}
                       </button>
@@ -209,20 +209,20 @@ export default function AdminPage() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50">
+        <div className="fixed bottom-6 right-6 z-50 max-w-[calc(100vw-3rem)]">
           <div
             className={`card flex items-center gap-2.5 px-4 py-3 text-sm font-medium ${
               toast.type === "success"
-                ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-                : "border-red-200 bg-red-50 text-red-900"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
+                : "border-red-200 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300"
             }`}
           >
             {toast.type === "success" ? (
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
             ) : (
-              <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
+              <AlertCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
             )}
-            {toast.message}
+            <span className="break-words">{toast.message}</span>
           </div>
         </div>
       )}

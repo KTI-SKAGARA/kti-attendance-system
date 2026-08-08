@@ -80,7 +80,6 @@ export default function InputPage() {
       const res = await getGenList();
       if (res.success && res.data) {
         setGenList(res.data);
-        // Auto-select first active gen
         const firstActive = res.data.find((g) => g.status === "aktif");
         if (firstActive) setGen(firstActive.gen);
       }
@@ -164,8 +163,6 @@ export default function InputPage() {
     const totalKas = hadir.reduce((sum, s) => sum + s.nominalKas, 0);
     return { hadirCount: hadir.length, totalStudents: quickStudents.length, totalKas };
   }, [quickStudents]);
-
-  // ---- Normal mode handlers ----
 
   const handleStatusChange = (s: StatusAbsen) => {
     setStatusAbsen(s);
@@ -268,8 +265,6 @@ export default function InputPage() {
     setTimeout(() => setToast(null), TOAST_DURATION);
   };
 
-  // ---- Quick mode handlers ----
-
   const toggleQuickStudent = (idx: number) => {
     const student = quickStudents[idx];
     if (!student) return;
@@ -340,8 +335,6 @@ export default function InputPage() {
     setTimeout(() => setToast(null), TOAST_DURATION);
   };
 
-  // ---- Shared handlers ----
-
   const resetForm = () => {
     setGen(activeGens[0] ?? "");
     setKelas("");
@@ -367,20 +360,20 @@ export default function InputPage() {
   return (
     <div className="mx-auto max-w-2xl animate-page">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-slate-200 pb-5">
+      <div className="flex items-center justify-between border-b border-slate-200 pb-5 dark:border-slate-800">
         <div className="flex items-center gap-3">
           <Link
             href="/"
-            className="btn btn-secondary p-2"
+            className="btn btn-secondary min-h-[44px] min-w-[44px] p-2"
             aria-label="Kembali ke dashboard"
           >
-            <ArrowLeft className="h-4 w-4 text-slate-600" />
+            <ArrowLeft className="h-4 w-4 text-slate-600 dark:text-slate-400" />
           </Link>
           <div>
-            <h1 className="text-xl font-semibold tracking-tight text-slate-900">
+            <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100">
               Input Absensi &amp; Kas
             </h1>
-            <p className="mt-0.5 text-sm text-slate-500">
+            <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">
               {APP_NAME} — {SCHOOL_NAME}
             </p>
           </div>
@@ -388,23 +381,23 @@ export default function InputPage() {
       </div>
 
       {/* Mode Toggle */}
-      <div className="mt-5 flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5">
+      <div className="mt-5 flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-0.5 dark:border-slate-700 dark:bg-slate-800">
         <button
           onClick={() => setMode("normal")}
-          className={`btn flex-1 px-3 py-2 text-xs font-medium ${
-            mode === "normal" ? "bg-slate-900 text-white" : "btn-ghost text-slate-600"
+          className={`btn flex-1 min-h-[44px] px-3 py-2 text-sm font-medium ${
+            mode === "normal" ? "bg-slate-900 text-white dark:bg-slate-700" : "btn-ghost text-slate-600 dark:text-slate-400"
           }`}
         >
-          <PenLine className="h-3.5 w-3.5" />
+          <PenLine className="h-4 w-4" />
           Input Manual
         </button>
         <button
           onClick={() => setMode("cepat")}
-          className={`btn flex-1 px-3 py-2 text-xs font-medium ${
-            mode === "cepat" ? "bg-slate-900 text-white" : "btn-ghost text-slate-600"
+          className={`btn flex-1 min-h-[44px] px-3 py-2 text-sm font-medium ${
+            mode === "cepat" ? "bg-slate-900 text-white dark:bg-slate-700" : "btn-ghost text-slate-600 dark:text-slate-400"
           }`}
         >
-          <ListChecks className="h-3.5 w-3.5" />
+          <ListChecks className="h-4 w-4" />
           Mode Cepat
         </button>
       </div>
@@ -432,7 +425,7 @@ export default function InputPage() {
               ))}
             </select>
             {errors.gen && (
-              <p className="mt-1 flex items-center gap-1 text-xs text-red-600">
+              <p className="mt-1 flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
                 <AlertCircle className="h-3 w-3" />
                 {errors.gen}
               </p>
@@ -462,7 +455,7 @@ export default function InputPage() {
               ))}
             </select>
             {errors.kelas && (
-              <p className="mt-1 flex items-center gap-1 text-xs text-red-600">
+              <p className="mt-1 flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
                 <AlertCircle className="h-3 w-3" />
                 {errors.kelas}
               </p>
@@ -486,14 +479,13 @@ export default function InputPage() {
         {/* ---- NORMAL MODE ---- */}
         {mode === "normal" && (
           <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Nama siswa dengan saran */}
             <div>
               <div className="flex items-center justify-between">
                 <label htmlFor="input-nama" className="label !mb-0">
                   Nama Lengkap Siswa <span className="text-red-500">*</span>
                 </label>
                 {existingStudents.length > 0 && (
-                  <span className="flex items-center gap-1 text-[11px] font-medium text-slate-500">
+                  <span className="flex items-center gap-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
                     <User className="h-3 w-3" /> {existingStudents.length} siswa terdaftar
                   </span>
                 )}
@@ -515,15 +507,15 @@ export default function InputPage() {
                 />
 
                 {showSuggestions && suggestions.length > 0 && (
-                  <ul className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-sm">
+                  <ul className="absolute z-10 mt-1 max-h-64 w-full overflow-auto rounded-lg border border-slate-200 bg-white py-1 shadow-sm dark:border-slate-700 dark:bg-slate-800">
                     {suggestions.map((s) => (
                       <li key={`${s.nama}-${s.kelas}`}>
                         <button
                           type="button"
                           onClick={() => pickSuggestion(s)}
-                          className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left hover:bg-slate-50"
+                          className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left hover:bg-slate-50 dark:hover:bg-slate-700"
                         >
-                          <span className="truncate text-sm font-medium uppercase text-slate-800">
+                          <span className="truncate text-sm font-medium uppercase text-slate-800 dark:text-slate-200">
                             {s.nama}
                           </span>
                           <span className="shrink-0 text-xs text-slate-400">{s.kelas}</span>
@@ -535,7 +527,7 @@ export default function InputPage() {
               </div>
 
               {errors.nama ? (
-                <p className="mt-1 flex items-center gap-1 text-xs text-red-600">
+                <p className="mt-1 flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
                   <AlertCircle className="h-3 w-3" />
                   {errors.nama}
                 </p>
@@ -547,7 +539,6 @@ export default function InputPage() {
               )}
             </div>
 
-            {/* Status + Kas */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label htmlFor="input-status" className="label">
@@ -571,7 +562,7 @@ export default function InputPage() {
                 <span className="label">Kas Rutin</span>
                 <div
                   className={`rounded-lg border p-3.5 ${
-                    errors.kas ? "border-red-300" : "border-slate-200"
+                    errors.kas ? "border-red-300" : "border-slate-200 dark:border-slate-700"
                   }`}
                 >
                   <label
@@ -589,7 +580,7 @@ export default function InputPage() {
                       }}
                       className="h-4 w-4 rounded border-slate-300 accent-navy-600"
                     />
-                    <span className="text-sm font-medium text-slate-800">
+                    <span className="text-sm font-medium text-slate-800 dark:text-slate-200">
                       Bayar kas rutin ({formatRupiah(KAS_RUTIN_DEFAULT)})
                     </span>
                   </label>
@@ -614,9 +605,9 @@ export default function InputPage() {
                     </div>
                   )}
 
-                  <p className="mt-2 text-[11px] text-slate-500">{kasRules.catatan}</p>
+                  <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">{kasRules.catatan}</p>
                   {errors.kas && (
-                    <p className="mt-1 flex items-center gap-1 text-xs font-medium text-red-600">
+                    <p className="mt-1 flex items-center gap-1 text-xs font-medium text-red-600 dark:text-red-400">
                       <AlertCircle className="h-3 w-3" />
                       {errors.kas}
                     </p>
@@ -625,12 +616,11 @@ export default function InputPage() {
               </div>
             </div>
 
-            {/* Actions */}
             <div className="flex items-center gap-3 pt-1">
               <button
                 type="submit"
                 disabled={submitting}
-                className="btn btn-primary flex-1 py-3 text-sm font-semibold"
+                className="btn btn-primary flex-1 min-h-[48px] py-3 text-sm font-semibold"
               >
                 {submitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -642,7 +632,7 @@ export default function InputPage() {
               <button
                 type="button"
                 onClick={resetForm}
-                className="btn btn-secondary px-4 py-3 text-sm font-medium"
+                className="btn btn-secondary min-h-[48px] px-4 py-3 text-sm font-medium"
                 disabled={submitting}
               >
                 <RotateCcw className="h-4 w-4 text-slate-500" />
@@ -656,23 +646,23 @@ export default function InputPage() {
         {mode === "cepat" && (
           <div className="space-y-4">
             {!gen ? (
-              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 py-10 text-center">
-                <ListChecks className="mx-auto h-8 w-8 text-slate-300" />
-                <p className="mt-2 text-sm text-slate-500">
+              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 py-10 text-center dark:border-slate-600 dark:bg-slate-800/50">
+                <ListChecks className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600" />
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                   Pilih gen untuk melanjutkan.
                 </p>
               </div>
             ) : !kelas ? (
-              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 py-10 text-center">
-                <ListChecks className="mx-auto h-8 w-8 text-slate-300" />
-                <p className="mt-2 text-sm text-slate-500">
+              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 py-10 text-center dark:border-slate-600 dark:bg-slate-800/50">
+                <ListChecks className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600" />
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                   Pilih kelas untuk menampilkan daftar siswa.
                 </p>
               </div>
             ) : quickStudents.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 py-10 text-center">
-                <User className="mx-auto h-8 w-8 text-slate-300" />
-                <p className="mt-2 text-sm text-slate-500">
+              <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 py-10 text-center dark:border-slate-600 dark:bg-slate-800/50">
+                <User className="mx-auto h-8 w-8 text-slate-300 dark:text-slate-600" />
+                <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
                   Belum ada data siswa di kelas <span className="font-semibold">{kelas}</span>.
                 </p>
                 <p className="mt-1 text-xs text-slate-400">
@@ -682,28 +672,28 @@ export default function InputPage() {
             ) : (
               <>
                 {/* Summary bar */}
-                <div className="flex items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5">
-                  <div className="flex items-center gap-4 text-xs">
-                    <span className="text-slate-500">
-                      <span className="font-semibold text-slate-900">{quickStats.totalStudents}</span> siswa
+                <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 dark:border-slate-700 dark:bg-slate-800">
+                  <div className="flex flex-wrap items-center gap-3 text-xs">
+                    <span className="text-slate-500 dark:text-slate-400">
+                      <span className="font-semibold text-slate-900 dark:text-slate-100">{quickStats.totalStudents}</span> siswa
                     </span>
-                    <span className="text-slate-500">
-                      Hadir: <span className="font-semibold text-emerald-600">{quickStats.hadirCount}</span>
+                    <span className="text-slate-500 dark:text-slate-400">
+                      Hadir: <span className="font-semibold text-emerald-600 dark:text-emerald-400">{quickStats.hadirCount}</span>
                     </span>
-                    <span className="text-slate-500">
-                      Kas: <span className="font-semibold text-slate-900">{formatRupiah(quickStats.totalKas)}</span>
+                    <span className="text-slate-500 dark:text-slate-400">
+                      Kas: <span className="font-semibold text-slate-900 dark:text-slate-100">{formatRupiah(quickStats.totalKas)}</span>
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => toggleAllQuick(true)}
-                      className="btn px-2 py-1 text-[11px] text-slate-600"
+                      className="btn min-h-[44px] px-3 py-2 text-xs text-slate-600 dark:text-slate-400"
                     >
                       Centang Semua
                     </button>
                     <button
                       onClick={() => toggleAllQuick(false)}
-                      className="btn px-2 py-1 text-[11px] text-slate-600"
+                      className="btn min-h-[44px] px-3 py-2 text-xs text-slate-600 dark:text-slate-400"
                     >
                       Batal
                     </button>
@@ -711,7 +701,7 @@ export default function InputPage() {
                 </div>
 
                 {/* Checklist table */}
-                <div className="overflow-hidden rounded-lg border border-slate-200">
+                <div className="overflow-x-auto rounded-lg border border-slate-200 dark:border-slate-700">
                   <table className="data-table">
                     <thead>
                       <tr>
@@ -724,17 +714,17 @@ export default function InputPage() {
                       {quickStudents.map((s, idx) => (
                         <tr
                           key={s.nama}
-                          className={s.checked ? "bg-emerald-50/50" : ""}
+                          className={s.checked ? "bg-emerald-50/50 dark:bg-emerald-900/20" : ""}
                         >
                           <td className="text-center">
                             <input
                               type="checkbox"
                               checked={s.checked}
                               onChange={() => toggleQuickStudent(idx)}
-                              className="h-4 w-4 rounded border-slate-300 accent-navy-600"
+                              className="h-5 w-5 rounded border-slate-300 accent-navy-600"
                             />
                           </td>
-                          <td className="font-medium uppercase text-slate-900">
+                          <td className="font-medium uppercase text-slate-900 dark:text-slate-100">
                             {s.nama}
                           </td>
                           <td className="text-right">
@@ -747,7 +737,7 @@ export default function InputPage() {
                                 onChange={(e) =>
                                   updateQuickKas(idx, Number(e.target.value) || 0)
                                 }
-                                className="w-24 rounded border border-slate-200 bg-white px-2 py-1 text-right text-xs tabular-nums focus:border-navy-400 focus:ring-1 focus:ring-navy-400"
+                                className="w-24 rounded border border-slate-200 bg-white px-2 py-1.5 text-right text-xs tabular-nums focus:border-navy-400 focus:ring-1 focus:ring-navy-400 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
                               />
                             ) : (
                               <span className="text-xs text-slate-400">—</span>
@@ -760,18 +750,17 @@ export default function InputPage() {
                 </div>
 
                 {errors.quick && (
-                  <p className="flex items-center gap-1 text-xs text-red-600">
+                  <p className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400">
                     <AlertCircle className="h-3 w-3" />
                     {errors.quick}
                   </p>
                 )}
 
-                {/* Actions */}
                 <div className="flex items-center gap-3 pt-1">
                   <button
                     onClick={handleQuickSubmit}
                     disabled={submitting || quickStats.hadirCount === 0}
-                    className="btn btn-primary flex-1 py-3 text-sm font-semibold"
+                    className="btn btn-primary flex-1 min-h-[48px] py-3 text-sm font-semibold"
                   >
                     {submitting ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
@@ -785,7 +774,7 @@ export default function InputPage() {
                   <button
                     type="button"
                     onClick={resetForm}
-                    className="btn btn-secondary px-4 py-3 text-sm font-medium"
+                    className="btn btn-secondary min-h-[48px] px-4 py-3 text-sm font-medium"
                     disabled={submitting}
                   >
                     <RotateCcw className="h-4 w-4 text-slate-500" />
@@ -800,20 +789,20 @@ export default function InputPage() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50">
+        <div className="fixed bottom-6 right-6 z-50 max-w-[calc(100vw-3rem)]">
           <div
             className={`card flex items-center gap-2.5 px-4 py-3 text-sm font-medium ${
               toast.type === "success"
-                ? "border-emerald-200 bg-emerald-50 text-emerald-900"
-                : "border-red-200 bg-red-50 text-red-900"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300"
+                : "border-red-200 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-900/30 dark:text-red-300"
             }`}
           >
             {toast.type === "success" ? (
-              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+              <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
             ) : (
-              <AlertCircle className="h-4 w-4 shrink-0 text-red-600" />
+              <AlertCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-400" />
             )}
-            {toast.message}
+            <span className="break-words">{toast.message}</span>
           </div>
         </div>
       )}
