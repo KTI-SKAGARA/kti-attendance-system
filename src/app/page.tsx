@@ -9,6 +9,7 @@ import {
   type FilterOptions,
   type DashboardStats,
   type GenConfig,
+  type StatusAbsen,
   SKAGARA_CLASSES,
 } from "@/types/attendance";
 import {
@@ -16,6 +17,7 @@ import {
   getFilterOptions,
   getDashboardStats,
   deleteAttendanceRecord,
+  updateAttendanceRecord,
   getGenList,
 } from "@/app/actions/attendance";
 import { formatRupiah, formatBulanTahun } from "@/lib/utils";
@@ -34,6 +36,7 @@ import {
   Trash2,
   Users,
   Archive,
+  Pencil,
 } from "lucide-react";
 import Link from "next/link";
 import * as XLSX from "xlsx";
@@ -85,6 +88,17 @@ export default function DashboardPage() {
     record: TaggedRecord | null;
   }>({ open: false, index: -1, record: null });
   const [deleting, setDeleting] = useState(false);
+
+  const [editModal, setEditModal] = useState<{
+    open: boolean;
+    index: number;
+    record: TaggedRecord | null;
+  }>({ open: false, index: -1, record: null });
+  const [editNama, setEditNama] = useState("");
+  const [editKelas, setEditKelas] = useState("");
+  const [editStatus, setEditStatus] = useState<StatusAbsen>("Hadir");
+  const [editKas, setEditKas] = useState(0);
+  const [editing, setEditing] = useState(false);
 
   const [toast, setToast] = useState<{
     type: "success" | "error";
@@ -235,6 +249,40 @@ export default function DashboardPage() {
       setToast({ type: "error", message: "Gagal menghapus data." });
     } finally {
       setDeleting(false);
+      setTimeout(() => setToast(null), TOAST_DURATION);
+    }
+  };
+
+  // Edit handler
+  const openEditModal = (record: TaggedRecord, globalIndex: number) => {
+    setEditModal({ open: true, index: globalIndex, record });
+    setEditNama(record.nama);
+    setEditKelas(record.kelas);
+    setEditStatus(record.statusAbsen);
+    setEditKas(record.nominalKas);
+  };
+
+  const confirmEditRecord = async () => {
+    if (editModal.index < 0 || !editModal.record) return;
+    setEditing(true);
+    try {
+      const res = await updateAttendanceRecord(editModal.record._gen, editModal.index, {
+        nama: editNama.toUpperCase(),
+        kelas: editKelas,
+        statusAbsen: editStatus,
+        nominalKas: editKas,
+      });
+      if (res.success) {
+        setToast({ type: "success", message: "Data berhasil diupdate." });
+        setEditModal({ open: false, index: -1, record: null });
+        loadRecords();
+      } else {
+        setToast({ type: "error", message: res.error || "Gagal mengupdate data." });
+      }
+    } catch {
+      setToast({ type: "error", message: "Gagal mengupdate data." });
+    } finally {
+      setEditing(false);
       setTimeout(() => setToast(null), TOAST_DURATION);
     }
   };
@@ -530,7 +578,7 @@ export default function DashboardPage() {
                       <th>Status</th>
                       <th className="text-right">Kas</th>
                       {filters.gen === "semua" && <th>Gen</th>}
-                      <th className="w-10"></th>
+                      <th className="w-20"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -585,7 +633,17 @@ export default function DashboardPage() {
                                     </span>
                                   </td>
                                 )}
-                                <td className="w-10 text-right">
+                                <td className="w-20 text-right">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      openEditModal(r, rowIdx);
+                                    }}
+                                    className="btn btn-ghost min-h-[44px] min-w-[44px] p-2 text-slate-400 hover:text-blue-600"
+                                    title="Edit"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </button>
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -771,6 +829,83 @@ export default function DashboardPage() {
           onConfirm={confirmDeleteRecord}
           onCancel={() => setDeleteModal({ open: false, index: -1, record: null })}
         />
+      )}
+
+      {/* Edit modal */}
+      {editModal.open && editModal.record && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="card w-full max-w-md p-6">
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Edit Data Absensi</h3>
+            <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+              {editModal.record.nama} — Gen {editModal.record._gen}
+            </p>
+
+            <div className="mt-4 space-y-3">
+              <div>
+                <label className="label">Nama</label>
+                <input
+                  type="text"
+                  className="input font-medium uppercase"
+                  value={editNama}
+                  onChange={(e) => setEditNama(e.target.value.toUpperCase())}
+                />
+              </div>
+              <div>
+                <label className="label">Kelas</label>
+                <select
+                  className="select"
+                  value={editKelas}
+                  onChange={(e) => setEditKelas(e.target.value)}
+                >
+                  {SKAGARA_CLASSES.map((k) => (
+                    <option key={k} value={k}>{k}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label">Status</label>
+                <select
+                  className="select"
+                  value={editStatus}
+                  onChange={(e) => setEditStatus(e.target.value as StatusAbsen)}
+                >
+                  {(["Hadir", "Sakit", "Izin", "Alfa"] as StatusAbsen[]).map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="label">Nominal Kas (Rp)</label>
+                <input
+                  type="number"
+                  min="0"
+                  step="500"
+                  className="input tabular-nums"
+                  value={editKas}
+                  onChange={(e) => setEditKas(Number(e.target.value) || 0)}
+                />
+              </div>
+            </div>
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                onClick={() => setEditModal({ open: false, index: -1, record: null })}
+                disabled={editing}
+                className="btn btn-secondary min-h-[44px] px-4 py-2 text-sm"
+              >
+                Batal
+              </button>
+              <button
+                onClick={confirmEditRecord}
+                disabled={editing}
+                className="btn btn-primary min-h-[44px] px-4 py-2 text-sm"
+              >
+                {editing && <Loader2 className="h-4 w-4 animate-spin" />}
+                {editing ? "Menyimpan..." : "Simpan"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Toast */}
