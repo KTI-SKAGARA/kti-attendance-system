@@ -6,6 +6,28 @@ export interface ExpenseCategory {
   created_at: string;
 }
 
+export interface IncomeCategory {
+  id: string;
+  nama: string;
+  deskripsi: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface Income {
+  id: string;
+  tanggal: string;
+  bulan_tahun: string;
+  category_id: string;
+  deskripsi: string;
+  nominal: number;
+  submitted_by?: string;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  category_nama?: string;
+}
+
 export interface Expense {
   id: string;
   tanggal: string;
@@ -38,6 +60,10 @@ export interface FinanceSummary {
   totalExpenses: number;
   balance: number;
   incomeByGen: { gen: string; total: number }[];
+  /** Pemasukan non-kas per kategori (penjualan, sponsor, dll.) */
+  nonKasIncomeByCategory: { category: string; total: number }[];
+  /** Total pemasukan non-kas */
+  totalNonKasIncome: number;
   expensesByCategory: { category: string; total: number }[];
   monthlyTrend: {
     bulan_tahun: string;
@@ -55,6 +81,9 @@ export interface MonthlyReport {
   attendanceCount: number;
   expenseItems?: { tanggal: string; deskripsi: string; category: string; nominal: number }[];
   incomeByGen?: { gen: string; total: number }[];
+  /** Pemasukan non-kas untuk bulan ini */
+  nonKasIncome?: number;
+  nonKasIncomeItems?: { tanggal: string; deskripsi: string; category: string; nominal: number }[];
 }
 
 export interface KasPayment {

@@ -27,7 +27,7 @@ export default function FinanceSummaryCard({ totalIncome, totalExpenses, balance
         </p>
         <p className="mt-1 text-[11px] text-muted flex items-center gap-1 font-medium">
           <TrendingUp className="h-3 w-3 text-emerald-500 shrink-0" />
-          <span>Total uang kas masuk dari iuran siswa</span>
+          <span>Total uang kas masuk (iuran siswa + pemasukan lain)</span>
         </p>
       </div>
 
