@@ -29,6 +29,16 @@ KTI SKAGARA — Next.js 16 (App Router) + TypeScript + Tailwind CSS v4 attendanc
 - **In-memory Caching**: `cachedDoc` TTL is 60s, `recordsCache` TTL is 15s. Any write operation (`appendRecords`, `deleteRecord`, `batchDelete`, `batchMove`, `updateRecord`) calls `invalidateCache()` to ensure fresh data.
 - **Mock mode**: if no credentials are configured, the app silently uses an in-memory store (`mockAppended`). Dev works with zero setup, but data lives only in the server process — don't assume Google Sheets failure if creds are absent; it's intended behavior. Navbar shows a "Mode Simulasi" badge (via `getAppConfig`) so the state is visible.
 
+## Finance: Pemasukan Non-Kas (Income)
+
+- **Income** = pemasukan selain iuran kas siswa: penjualan, sponsor, sumbangan, dana sekolah, dll. Stored in Supabase `incomes` table (migration: `supabase/migrations/20261002_incomes.sql`).
+- **Income categories** stored in `income_categories` table (seeded: Penjualan, Sponsor, Sumbangan, Dana Sekolah, Lainnya).
+- Types: `Income`, `IncomeCategory` in `src/types/finance.ts`.
+- Server actions: `getIncomes`, `addIncome`, `updateIncome`, `deleteIncome`, `getIncomeCategories`, `upsertIncomeCategory`, `deleteIncomeCategory` in `src/app/actions/finance.ts`.
+- UI: `IncomeTable`, `IncomeFormModal` in `src/components/finance/`.
+- **FinanceSummary** `totalIncome` = kas siswa + non-kas income. `totalNonKasIncome` and `nonKasIncomeByCategory` track non-kas breakdown. Same for `MonthlyReport`.
+- Finance page (`/finance`) has a "Pemasukan (Non-Kas)" sub-tab under Arus Kas view.
+
 ## Conventions
 
 - All UI text, error messages, and code comments are in Indonesian. Keep it that way.

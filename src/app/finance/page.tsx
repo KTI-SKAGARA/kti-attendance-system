@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
   TrendingDown,
+  TrendingUp,
   Plus,
   Loader2,
   ArrowLeft,
@@ -15,13 +16,18 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import type { Gen } from "@/types/attendance";
-import type { Expense, ExpenseCategory, Budget, MonthlyReport, KasPayment } from "@/types/finance";
+import type { Expense, ExpenseCategory, Income, IncomeCategory, Budget, MonthlyReport, KasPayment } from "@/types/finance";
 import {
   getExpenseCategories,
   getExpenses,
   addExpense,
   updateExpense,
   deleteExpense,
+  getIncomeCategories,
+  getIncomes,
+  addIncome,
+  updateIncome,
+  deleteIncome,
   getBudgets,
   upsertBudget,
   deleteBudget,
@@ -38,13 +44,15 @@ import Toast from "@/components/Toast";
 import FinanceSummaryCard from "@/components/finance/FinanceSummaryCard";
 import ExpenseTable from "@/components/finance/ExpenseTable";
 import ExpenseFormModal from "@/components/finance/ExpenseFormModal";
+import IncomeTable from "@/components/finance/IncomeTable";
+import IncomeFormModal from "@/components/finance/IncomeFormModal";
 import BudgetView from "@/components/finance/BudgetView";
 import MonthlyReportView from "@/components/finance/MonthlyReportView";
 import KasDashboard from "@/components/finance/KasDashboard";
 import { useTaggedRecords } from "@/hooks/useAttendanceData";
 
 type MainView = "cashflow" | "siswa";
-type CashflowTab = "ringkasan" | "pengeluaran" | "budget" | "laporan";
+type CashflowTab = "ringkasan" | "pemasukan" | "pengeluaran" | "budget" | "laporan";
 
 export default function FinancePage() {
   const [mainView, setMainView] = useState<MainView>(() => {
@@ -60,7 +68,7 @@ export default function FinancePage() {
   const [cashflowTab, setCashflowTab] = useState<CashflowTab>(() => {
     if (typeof window === "undefined") return "ringkasan";
     const t = new URLSearchParams(window.location.search).get("tab") as CashflowTab | null;
-    if (t && ["ringkasan", "pengeluaran", "budget", "laporan"].includes(t)) {
+    if (t && ["ringkasan", "pemasukan", "pengeluaran", "budget", "laporan"].includes(t)) {
       return t;
     }
     return "ringkasan";
@@ -77,6 +85,8 @@ export default function FinancePage() {
     totalExpenses: number;
     balance: number;
     incomeByGen: { gen: string; total: number }[];
+    nonKasIncomeByCategory: { category: string; total: number }[];
+    totalNonKasIncome: number;
   } | null>(null);
 
   // Expenses
@@ -85,6 +95,13 @@ export default function FinancePage() {
   const [expenseLoading, setExpenseLoading] = useState(true);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+
+  // Incomes (pemasukan non-kas)
+  const [incomes, setIncomes] = useState<Income[]>([]);
+  const [incomeCategories, setIncomeCategories] = useState<IncomeCategory[]>([]);
+  const [incomeLoading, setIncomeLoading] = useState(true);
+  const [showIncomeModal, setShowIncomeModal] = useState(false);
+  const [editingIncome, setEditingIncome] = useState<Income | null>(null);
 
   // Budget
   const [budgets, setBudgets] = useState<Budget[]>([]);
@@ -130,6 +147,8 @@ export default function FinancePage() {
         totalExpenses: res.data.totalExpenses,
         balance: res.data.balance,
         incomeByGen: res.data.incomeByGen,
+        nonKasIncomeByCategory: res.data.nonKasIncomeByCategory,
+        totalNonKasIncome: res.data.totalNonKasIncome,
       });
     }
   }, []);
@@ -144,6 +163,18 @@ export default function FinancePage() {
   const loadCategories = useCallback(async () => {
     const res = await getExpenseCategories();
     if (res.success && res.data) setCategories(res.data);
+  }, []);
+
+  const loadIncomes = useCallback(async () => {
+    setIncomeLoading(true);
+    const res = await getIncomes();
+    if (res.success && res.data) setIncomes(res.data);
+    setIncomeLoading(false);
+  }, []);
+
+  const loadIncomeCategories = useCallback(async () => {
+    const res = await getIncomeCategories();
+    if (res.success && res.data) setIncomeCategories(res.data);
   }, []);
 
   const loadBudgets = useCallback(async (bulanTahun: string) => {
@@ -189,7 +220,9 @@ export default function FinancePage() {
     loadGens(); // eslint-disable-line react-hooks/set-state-in-effect
     loadExpenses();
     loadCategories();
-  }, [loadGens, loadExpenses, loadCategories]);
+    loadIncomes();
+    loadIncomeCategories();
+  }, [loadGens, loadExpenses, loadCategories, loadIncomes, loadIncomeCategories]);
 
   useEffect(() => {
     if (gens.length > 0) loadSummary(gens); // eslint-disable-line react-hooks/set-state-in-effect
@@ -268,6 +301,66 @@ export default function FinancePage() {
     setTimeout(() => setToast(null), TOAST_DURATION);
   };
 
+  // --- Income CRUD ---
+
+  const handleAddIncome = async (data: {
+    deskripsi: string;
+    nominal: number;
+    category_id: string;
+    tanggal: string;
+    bulan_tahun: string;
+  }) => {
+    const res = await addIncome(data.deskripsi, data.nominal, data.category_id, data.tanggal, data.bulan_tahun);
+    if (res.success) {
+      setToast({ type: "success", message: "Pemasukan ditambahkan." });
+      setShowIncomeModal(false);
+      loadIncomes();
+      if (gens.length > 0) loadSummary(gens);
+    } else {
+      setToast({ type: "error", message: res.error ?? "Gagal menambah pemasukan." });
+    }
+    setTimeout(() => setToast(null), TOAST_DURATION);
+  };
+
+  const handleEditIncome = async (data: {
+    deskripsi: string;
+    nominal: number;
+    category_id: string;
+    tanggal: string;
+    bulan_tahun: string;
+  }) => {
+    if (!editingIncome) return;
+    const res = await updateIncome(editingIncome.id, {
+      deskripsi: data.deskripsi,
+      nominal: data.nominal,
+      category_id: data.category_id,
+      tanggal: data.tanggal,
+      bulan_tahun: data.bulan_tahun,
+    });
+    if (res.success) {
+      setToast({ type: "success", message: "Pemasukan diupdate." });
+      setShowIncomeModal(false);
+      setEditingIncome(null);
+      loadIncomes();
+      if (gens.length > 0) loadSummary(gens);
+    } else {
+      setToast({ type: "error", message: res.error ?? "Gagal update." });
+    }
+    setTimeout(() => setToast(null), TOAST_DURATION);
+  };
+
+  const handleDeleteIncome = async (id: string) => {
+    const res = await deleteIncome(id);
+    if (res.success) {
+      setToast({ type: "success", message: "Pemasukan dihapus." });
+      loadIncomes();
+      if (gens.length > 0) loadSummary(gens);
+    } else {
+      setToast({ type: "error", message: res.error ?? "Gagal menghapus." });
+    }
+    setTimeout(() => setToast(null), TOAST_DURATION);
+  };
+
   // --- Budget CRUD ---
 
   const handleAddBudget = async (categoryId: string, target: number) => {
@@ -321,6 +414,7 @@ export default function FinancePage() {
 
   const cashflowTabs: { key: CashflowTab; label: string; icon: React.ReactNode }[] = [
     { key: "ringkasan", label: "Ringkasan Arus Kas", icon: <PieChart className="h-3.5 w-3.5" /> },
+    { key: "pemasukan", label: "Pemasukan (Non-Kas)", icon: <TrendingUp className="h-3.5 w-3.5" /> },
     { key: "pengeluaran", label: "Pengeluaran (Cash Out)", icon: <TrendingDown className="h-3.5 w-3.5" /> },
     { key: "budget", label: "Target Anggaran", icon: <BarChart3 className="h-3.5 w-3.5" /> },
     { key: "laporan", label: "Laporan Bulanan (LPJ)", icon: <Calendar className="h-3.5 w-3.5" /> },
@@ -576,6 +670,87 @@ export default function FinancePage() {
                     </p>
                   )}
                 </div>
+
+                {/* Non-Kas Income Breakdown */}
+                {summary && summary.nonKasIncomeByCategory && summary.nonKasIncomeByCategory.length > 0 && (
+                  <div className="card p-5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-display text-xs font-bold uppercase tracking-wide text-foreground">
+                          Cash In: Pemasukan Non-Kas
+                        </h3>
+                        <p className="text-[11px] text-muted">
+                          Pendapatan dari penjualan, sponsor, sumbangan, dan sumber lain
+                        </p>
+                      </div>
+                      <span className="badge bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30 text-xs font-bold">
+                        Total {formatRupiah(summary.totalNonKasIncome)}
+                      </span>
+                    </div>
+
+                    <div className="mt-4 space-y-3">
+                      {summary.nonKasIncomeByCategory
+                        .sort((a, b) => b.total - a.total)
+                        .map((item) => {
+                          const pct = summary.totalNonKasIncome > 0 ? (item.total / summary.totalNonKasIncome) * 100 : 0;
+                          return (
+                            <div key={item.category} className="space-y-1">
+                              <div className="flex items-center justify-between text-xs">
+                                <span className="font-bold text-foreground">{item.category}</span>
+                                <span className="font-mono font-bold text-teal-600 dark:text-teal-400">
+                                  {formatRupiah(item.total)}
+                                  <span className="ml-1.5 text-[10px] text-muted font-normal">
+                                    ({pct.toFixed(0)}%)
+                                  </span>
+                                </span>
+                              </div>
+                              <div className="h-2 w-full overflow-hidden rounded-full bg-surface-2">
+                                <div
+                                  className="h-full rounded-full bg-teal-500 transition-all"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Sub-tab: Pemasukan (Non-Kas) */}
+            {cashflowTab === "pemasukan" && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-foreground">
+                      Daftar Pemasukan Non-Kas
+                    </p>
+                    <p className="text-[11px] text-muted">
+                      {incomes.length} transaksi pemasukan tercatat (penjualan, sponsor, sumbangan, dll.)
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setEditingIncome(null);
+                      setShowIncomeModal(true);
+                    }}
+                    className="btn btn-primary min-h-[44px] shadow-xs"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Catat Pemasukan</span>
+                  </button>
+                </div>
+                <IncomeTable
+                  incomes={incomes}
+                  loading={incomeLoading}
+                  onEdit={(inc) => {
+                    setEditingIncome(inc);
+                    setShowIncomeModal(true);
+                  }}
+                  onDelete={handleDeleteIncome}
+                />
               </div>
             )}
 
@@ -681,6 +856,19 @@ export default function FinancePage() {
         onClose={() => {
           setShowExpenseModal(false);
           setEditingExpense(null);
+        }}
+      />
+
+      {/* Income form modal */}
+      <IncomeFormModal
+        open={showIncomeModal}
+        income={editingIncome}
+        categories={incomeCategories}
+        loading={incomeLoading}
+        onSubmit={editingIncome ? handleEditIncome : handleAddIncome}
+        onClose={() => {
+          setShowIncomeModal(false);
+          setEditingIncome(null);
         }}
       />
     </div>

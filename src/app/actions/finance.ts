@@ -6,6 +6,8 @@ import type { ApiResponse, Gen } from "@/types/attendance";
 import type {
   ExpenseCategory,
   Expense,
+  Income,
+  IncomeCategory,
   Budget,
   FinanceSummary,
   MonthlyReport,
@@ -228,6 +230,181 @@ export async function deleteExpense(id: string): Promise<ApiResponse<void>> {
 }
 
 // ---------------------------------------------------------------------------
+// Income Categories (Pemasukan Non-Kas)
+// ---------------------------------------------------------------------------
+
+export async function getIncomeCategories(): Promise<ApiResponse<IncomeCategory[]>> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("income_categories")
+    .select("*")
+    .eq("is_active", true)
+    .order("nama");
+
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: (data || []) as IncomeCategory[] };
+}
+
+export async function upsertIncomeCategory(
+  nama: string,
+  deskripsi?: string
+): Promise<ApiResponse<IncomeCategory>> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("income_categories")
+    .upsert({ nama: nama.trim(), deskripsi: deskripsi || "" }, { onConflict: "nama" })
+    .select()
+    .single();
+
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: data as IncomeCategory };
+}
+
+export async function deleteIncomeCategory(id: string): Promise<ApiResponse<void>> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("income_categories")
+    .update({ is_active: false })
+    .eq("id", id);
+
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+// ---------------------------------------------------------------------------
+// Incomes (Pemasukan Non-Kas: penjualan, sponsor, sumbangan, dll.)
+// ---------------------------------------------------------------------------
+
+export async function getIncomes(bulanTahun?: string): Promise<ApiResponse<Income[]>> {
+  const supabase = await createClient();
+  let query = supabase
+    .from("incomes")
+    .select("*, income_categories(nama)")
+    .order("tanggal", { ascending: false });
+
+  if (bulanTahun) {
+    query = query.eq("bulan_tahun", bulanTahun);
+  }
+
+  const { data, error } = await query;
+  if (error) return { success: false, error: error.message };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const incomes: Income[] = (data || []).map((r: any) => ({
+    id: String(r.id),
+    tanggal: String(r.tanggal),
+    bulan_tahun: String(r.bulan_tahun),
+    category_id: String(r.category_id),
+    deskripsi: String(r.deskripsi),
+    nominal: Number(r.nominal),
+    submitted_by: r.submitted_by ? String(r.submitted_by) : undefined,
+    created_at: String(r.created_at),
+    updated_at: String(r.updated_at),
+    category_nama: r.income_categories?.nama as string | undefined,
+  }));
+
+  return { success: true, data: incomes };
+}
+
+export async function addIncome(
+  deskripsi: string,
+  nominal: number,
+  categoryId: string,
+  tanggal?: string,
+  bulanTahun?: string
+): Promise<ApiResponse<Income>> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
+  const tgl = tanggal || getTodayFormatted();
+  const bt = bulanTahun || getBulanTahunFromDate(tgl);
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("incomes")
+    .insert({
+      tanggal: tgl,
+      bulan_tahun: bt,
+      category_id: categoryId,
+      deskripsi: deskripsi.trim(),
+      nominal,
+      submitted_by: auth.userId,
+    })
+    .select("*, income_categories(nama)")
+    .single();
+
+  if (error) return { success: false, error: error.message };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const d: any = data;
+  const income: Income = {
+    id: String(d.id),
+    tanggal: String(d.tanggal),
+    bulan_tahun: String(d.bulan_tahun),
+    category_id: String(d.category_id),
+    deskripsi: String(d.deskripsi),
+    nominal: Number(d.nominal),
+    submitted_by: d.submitted_by ? String(d.submitted_by) : undefined,
+    created_at: String(d.created_at),
+    updated_at: String(d.updated_at),
+    category_nama: d.income_categories?.nama as string | undefined,
+  };
+
+  return { success: true, data: income };
+}
+
+export async function updateIncome(
+  id: string,
+  updates: Partial<Pick<Income, "deskripsi" | "nominal" | "category_id" | "tanggal" | "bulan_tahun">>
+): Promise<ApiResponse<Income>> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("incomes")
+    .update({ ...updates, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .select("*, income_categories(nama)")
+    .single();
+
+  if (error) return { success: false, error: error.message };
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const d: any = data;
+  const income: Income = {
+    id: String(d.id),
+    tanggal: String(d.tanggal),
+    bulan_tahun: String(d.bulan_tahun),
+    category_id: String(d.category_id),
+    deskripsi: String(d.deskripsi),
+    nominal: Number(d.nominal),
+    submitted_by: d.submitted_by ? String(d.submitted_by) : undefined,
+    created_at: String(d.created_at),
+    updated_at: String(d.updated_at),
+    category_nama: d.income_categories?.nama as string | undefined,
+  };
+
+  return { success: true, data: income };
+}
+
+export async function deleteIncome(id: string): Promise<ApiResponse<void>> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return { success: false, error: auth.error };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("incomes").delete().eq("id", id);
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+// ---------------------------------------------------------------------------
 // Budgets
 // ---------------------------------------------------------------------------
 
@@ -325,7 +502,7 @@ export async function getFinanceSummary(
 
     const incomeByGenMap = new Map<string, number>();
     const monthIncomeMap = new Map<string, number>();
-    let totalIncome = 0;
+    let totalKasIncome = 0;
 
     for (const r of kasRows || []) {
       const gen = String(r.gen);
@@ -335,11 +512,37 @@ export async function getFinanceSummary(
       if (gens.includes(gen as Gen)) {
         incomeByGenMap.set(gen, (incomeByGenMap.get(gen) || 0) + nominal);
         monthIncomeMap.set(bt, (monthIncomeMap.get(bt) || 0) + nominal);
-        totalIncome += nominal;
+        totalKasIncome += nominal;
       }
     }
 
     const incomeByGen = Array.from(incomeByGenMap.entries()).map(([gen, total]) => ({ gen, total }));
+
+    // Non-kas income (pemasukan lain: penjualan, sponsor, sumbangan, dll.)
+    const { data: incomeRows } = await supabase
+      .from("incomes")
+      .select("nominal, bulan_tahun, income_categories(nama)");
+
+    let totalNonKasIncome = 0;
+    const nonKasCatMap = new Map<string, number>();
+
+    for (const r of incomeRows || []) {
+      const nominal = Number((r as Record<string, unknown>).nominal) || 0;
+      const bt = String((r as Record<string, unknown>).bulan_tahun);
+      const catNama = ((r as Record<string, unknown>).income_categories as { nama: string } | null)?.nama || "Lainnya";
+
+      totalNonKasIncome += nominal;
+      nonKasCatMap.set(catNama, (nonKasCatMap.get(catNama) || 0) + nominal);
+      // Tambah ke monthly income juga
+      monthIncomeMap.set(bt, (monthIncomeMap.get(bt) || 0) + nominal);
+    }
+
+    const nonKasIncomeByCategory = Array.from(nonKasCatMap.entries()).map(([category, total]) => ({
+      category,
+      total,
+    }));
+
+    const totalIncome = totalKasIncome + totalNonKasIncome;
 
     // Expenses from Supabase
     const { data: expenseRows } = await supabase
@@ -400,6 +603,8 @@ export async function getFinanceSummary(
         totalExpenses,
         balance: totalIncome - totalExpenses,
         incomeByGen,
+        nonKasIncomeByCategory,
+        totalNonKasIncome,
         expensesByCategory,
         monthlyTrend,
       },
@@ -525,15 +730,33 @@ export async function getMonthlyReport(
       .eq("bulan_tahun", bulanTahun)
       .in("gen", activeGenStrings);
 
-    let income = 0;
+    let kasIncome = 0;
     const genIncomeMap = new Map<string, number>();
     for (const r of kasRows || []) {
       const g = String(r.gen);
       const nom = Number(r.nominal) || 0;
-      income += nom;
+      kasIncome += nom;
       genIncomeMap.set(g, (genIncomeMap.get(g) || 0) + nom);
     }
     const incomeByGen = Array.from(genIncomeMap.entries()).map(([gen, total]) => ({ gen, total }));
+
+    // Non-kas income for this month
+    const { data: nonKasRows } = await supabase
+      .from("incomes")
+      .select("tanggal, deskripsi, nominal, income_categories(nama)")
+      .eq("bulan_tahun", bulanTahun)
+      .order("tanggal", { ascending: true });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const nonKasIncomeItems = (nonKasRows || []).map((r: any) => ({
+      tanggal: String(r.tanggal || ""),
+      deskripsi: String(r.deskripsi || ""),
+      nominal: Number(r.nominal) || 0,
+      category: (r.income_categories?.nama as string) || "Lainnya",
+    }));
+
+    const nonKasIncome = nonKasIncomeItems.reduce((sum, i) => sum + i.nominal, 0);
+    const totalIncome = kasIncome + nonKasIncome;
 
     // Presensi: hitung unique orang dari attendance records (bukan dari kas_payments)
     const uniqueNames = new Set<string>();
@@ -580,13 +803,15 @@ export async function getMonthlyReport(
       success: true,
       data: {
         bulan_tahun: bulanTahun,
-        income,
+        income: totalIncome,
         expenses: totalExpenses,
-        balance: income - totalExpenses,
+        balance: totalIncome - totalExpenses,
         expenseBreakdown,
         attendanceCount,
         expenseItems,
         incomeByGen,
+        nonKasIncome,
+        nonKasIncomeItems,
       },
     };
   } catch (error) {
